@@ -298,13 +298,7 @@
     wpLayer.style.transform = bl > 0 ? 'scale(1.03)' : 'scale(1)';
   }
 
-  // Build Floating Quick Trigger Pill
-  const fab = document.createElement('button');
-  fab.id = 'w11-wp-fab';
-  fab.type = 'button';
-  fab.title = 'Personalize Desktop Wallpaper';
-  fab.innerHTML = '<span>🖼️</span><span>Wallpaper</span>';
-  document.body.appendChild(fab);
+  // Desktop shortcut replaces floating pill
 
   // Build Desktop Context Menu
   const ctxMenu = document.createElement('div');
@@ -419,7 +413,7 @@
     modal.style.display = 'none';
   }
 
-  fab.addEventListener('click', openModal);
+  
   document.getElementById('w11-wp-close').addEventListener('click', closeModal);
   document.getElementById('w11-wp-done').addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => {
@@ -527,7 +521,7 @@
 
   function isDesktopSurface(target) {
     if (!target) return false;
-    if (target.closest('#w11-wp-modal, #w11-ctx-menu, #w11-wp-fab, .window, .win, .taskbar, #taskbar, .start-menu, #start-menu, button, input, select, textarea')) {
+    if (target.closest('#w11-wp-modal, #w11-ctx-menu, .window, .win, .taskbar, #taskbar, .start-menu, #start-menu, button, input, select, textarea')) {
       return false;
     }
     return true;
@@ -581,6 +575,68 @@
       openModal();
     }
   });
+
+  
+  // Mount Windows 11 Personalize Desktop Shortcut Icon (fallback if not already in HTML grid)
+  if (!document.querySelector('[data-win-action="personalize"]')) {
+    const scStyle = document.createElement('style');
+    scStyle.textContent = `
+      #w11-desktop-shortcut {
+        position: fixed;
+        top: max(16px, env(safe-area-inset-top));
+        left: 14px;
+        z-index: 5;
+        width: 76px;
+        padding: 8px 4px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #ffffff;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      #w11-desktop-shortcut:hover, #w11-desktop-shortcut:active {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(6px);
+      }
+      #w11-desktop-shortcut .w11-sc-lbl {
+        display: block;
+        font: 500 11.5px/1.2 system-ui, -apple-system, sans-serif;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.65);
+        word-break: break-word;
+      }
+    `;
+    document.head.appendChild(scStyle);
+
+    const sc = document.createElement('div');
+    sc.id = 'w11-desktop-shortcut';
+    sc.setAttribute('role', 'button');
+    sc.setAttribute('tabindex', '0');
+    sc.setAttribute('data-win-action', 'personalize');
+    sc.setAttribute('data-action', 'wallpaper');
+    sc.title = 'Personalize Desktop Wallpaper';
+    sc.innerHTML = `<svg viewBox="0 0 48 48" width="38" height="38" style="display:block;margin:0 auto 4px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
+  <defs>
+    <linearGradient id="w11p_scr" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="w11p_br" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="7" width="38" height="26" rx="3.5" fill="url(#w11p_scr)" stroke="#e2e8f0" stroke-width="1.6"/>
+  <path d="M18 37h12M24 33v4" stroke="#cbd5e1" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M35 13l4 4-13 13-5 1 1-5z" fill="url(#w11p_br)" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/>
+</svg><span class="w11-sc-lbl">Personalize</span>`;
+    document.body.appendChild(sc);
+  }
 
   // Initial render
   applyWallpaper();
