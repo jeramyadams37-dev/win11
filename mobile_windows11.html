@@ -1,0 +1,2112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows 11</title>
+<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  :root {
+    --accent: #0078d4;
+    --accent-light: #60cdff;
+    --taskbar-bg: rgba(32,32,32,0.85);
+    --taskbar-height: 48px;
+    --glass: rgba(255,255,255,0.08);
+    --glass-border: rgba(255,255,255,0.12);
+    --win-bg: rgba(32,32,35,0.92);
+    --win-title: rgba(42,42,46,0.95);
+    --text: #fff;
+    --text-secondary: rgba(255,255,255,0.7);
+    --hover: rgba(255,255,255,0.08);
+    --active: rgba(255,255,255,0.14);
+    --radius: 8px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    color: var(--text);
+  }
+
+  /* DESKTOP */
+  #desktop {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #0a2463 0%, #1b4fad 25%, #0078d4 50%, #00b4e6 75%, #7ecef5 100%);
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, rgba(0,120,212,0.5) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,180,230,0.4) 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 80%, rgba(126,206,245,0.3) 0%, transparent 40%),
+      linear-gradient(135deg, #0a2463, #0078d4 50%, #7ecef5);
+    overflow: hidden;
+  }
+
+  /* Wallpaper bloom effect */
+  #desktop::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 60% 70% at 50% 50%, rgba(0,120,212,0.3) 0%, transparent 70%),
+      radial-gradient(ellipse 80% 40% at 30% 60%, rgba(126,206,245,0.2) 0%, transparent 60%);
+    animation: bloomPulse 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes bloomPulse {
+    from { opacity: 0.6; }
+    to { opacity: 1; }
+  }
+
+  /* Subtle light rays */
+  #desktop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(from 220deg at 50% 40%, transparent 0deg, rgba(255,255,255,0.03) 20deg, transparent 40deg, rgba(255,255,255,0.02) 60deg, transparent 80deg);
+  }
+
+  /* DESKTOP ICONS */
+  .desktop-icon {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 80px;
+    text-align: center;
+    transition: background 0.15s;
+  }
+  .desktop-icon:hover { background: rgba(255,255,255,0.12); }
+  .desktop-icon.selected { background: rgba(0,120,212,0.4); }
+  .desktop-icon .icon-img { font-size: 40px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+  .desktop-icon span { font-size: 12px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); line-height: 1.3; }
+
+  /* TASKBAR */
+  #taskbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--taskbar-height);
+    background: var(--taskbar-bg);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9000;
+  }
+
+  #taskbar-center {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .taskbar-btn {
+    width: 44px;
+    height: 40px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+    font-size: 22px;
+  }
+  .taskbar-btn:hover { background: rgba(255,255,255,0.1); }
+  .taskbar-btn.active { background: rgba(255,255,255,0.14); }
+  .taskbar-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 3px;
+    background: var(--accent-light);
+    border-radius: 2px;
+  }
+  .taskbar-btn.open::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 3px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 2px;
+  }
+
+  /* Start button special */
+  #start-btn { font-size: 20px; }
+
+  #taskbar-right {
+    position: absolute;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  #clock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 70px;
+  }
+  #clock:hover { background: var(--hover); }
+  #clock-time { font-size: 13px; font-weight: 500; }
+  #clock-date { font-size: 11px; color: var(--text-secondary); }
+
+  .tray-icon {
+    width: 36px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .tray-icon:hover { background: var(--hover); }
+
+  #taskbar-left {
+    position: absolute;
+    left: 8px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* WINDOWS */
+  .window {
+    position: fixed;
+    background: var(--win-bg);
+    backdrop-filter: blur(60px) saturate(180%);
+    -webkit-backdrop-filter: blur(60px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    min-width: 300px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    transition: box-shadow 0.2s;
+    animation: windowOpen 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes windowOpen {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .window.focused {
+    box-shadow: 0 16px 48px rgba(0,0,0,0.7), 0 4px 12px rgba(0,0,0,0.5);
+    border-color: rgba(255,255,255,0.18);
+  }
+
+  .window.minimized {
+    transform: scale(0.3) translateY(60vh) !important;
+    opacity: 0 !important;
+    pointer-events: none;
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.2s !important;
+  }
+
+  .window.maximized {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: calc(100vh - var(--taskbar-height)) !important;
+    border-radius: 0 !important;
+    transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .titlebar {
+    height: 44px;
+    background: var(--win-title);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    flex-shrink: 0;
+    cursor: move;
+    touch-action: none;
+  }
+  .titlebar .window-controls { touch-action: manipulation; }
+
+  .titlebar-icon { font-size: 16px; margin-right: 8px; }
+  .titlebar-title { font-size: 13px; font-weight: 400; flex: 1; color: var(--text); }
+
+  .window-controls {
+    display: flex;
+    gap: 0;
+    margin-right: -12px;
+    flex-shrink: 0;
+  }
+  .wc-btn {
+    width: 46px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: background 0.1s, color 0.1s;
+    border-radius: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255,255,255,0.15);
+    position: relative;
+    z-index: 10;
+  }
+  .wc-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .wc-btn.close:hover { background: #c42b1c; color: #fff; }
+  .wc-btn svg { width: 12px; height: 12px; }
+
+  .window-content {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+
+  /* RESIZE HANDLES */
+  .resize-handle {
+    position: absolute;
+    z-index: 10;
+  }
+  .resize-n { top: 0; left: 8px; right: 8px; height: 4px; cursor: n-resize; }
+  .resize-s { bottom: 0; left: 8px; right: 8px; height: 4px; cursor: s-resize; }
+  .resize-e { right: 0; top: 8px; bottom: 8px; width: 4px; cursor: e-resize; }
+  .resize-w { left: 0; top: 8px; bottom: 8px; width: 4px; cursor: w-resize; }
+  .resize-ne { top: 0; right: 0; width: 8px; height: 8px; cursor: ne-resize; }
+  .resize-nw { top: 0; left: 0; width: 8px; height: 8px; cursor: nw-resize; }
+  .resize-se { bottom: 0; right: 0; width: 8px; height: 8px; cursor: se-resize; }
+  .resize-sw { bottom: 0; left: 0; width: 8px; height: 8px; cursor: sw-resize; }
+
+  /* START MENU */
+  #start-menu {
+    position: fixed;
+    bottom: calc(var(--taskbar-height) + 8px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.96);
+    width: 640px;
+    height: 660px;
+    background: rgba(28,28,28,0.92);
+    backdrop-filter: blur(60px) saturate(200%);
+    -webkit-backdrop-filter: blur(60px) saturate(200%);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.8);
+    z-index: 9500;
+    padding: 24px;
+    display: none;
+    flex-direction: column;
+    opacity: 0;
+    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.34,1.2,0.64,1);
+  }
+  #start-menu.visible {
+    display: flex;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+
+  #start-search {
+    width: 100%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 10px 16px;
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    margin-bottom: 20px;
+  }
+  #start-search:focus { border-color: var(--accent); background: rgba(255,255,255,0.1); }
+  #start-search::placeholder { color: rgba(255,255,255,0.4); }
+
+  .start-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    letter-spacing: 0.02em;
+  }
+
+  #pinned-apps {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin-bottom: 20px;
+  }
+
+  .start-app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .start-app:hover { background: rgba(255,255,255,0.1); }
+  .start-app .app-icon { font-size: 30px; }
+  .start-app .app-name { font-size: 11px; color: var(--text-secondary); text-align: center; }
+
+  #recommended {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  .rec-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .rec-item:hover { background: rgba(255,255,255,0.08); }
+  .rec-icon { font-size: 24px; }
+  .rec-info { min-width: 0; }
+  .rec-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rec-time { font-size: 11px; color: var(--text-secondary); }
+
+  .start-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .user-info { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .user-avatar {
+    width: 34px; height: 34px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+  }
+  .user-name { font-size: 13px; }
+  .power-btn {
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px;
+    transition: background 0.15s;
+  }
+  .power-btn:hover { background: rgba(255,255,255,0.1); }
+
+  /* FILE EXPLORER CONTENT */
+  .fe-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    gap: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+  }
+  .fe-nav-btn {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 14px; color: var(--text-secondary);
+    transition: background 0.1s;
+  }
+  .fe-nav-btn:hover { background: var(--hover); color: #fff; }
+  .fe-address {
+    flex: 1;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: #fff;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+  }
+  .fe-address:focus { border-color: var(--accent); }
+
+  .fe-body { display: flex; height: calc(100% - 50px); overflow: hidden; }
+  .fe-sidebar {
+    width: 180px;
+    padding: 8px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+  }
+  .fe-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: background 0.1s;
+  }
+  .fe-sidebar-item:hover { background: var(--hover); color: #fff; }
+  .fe-sidebar-item.active { background: rgba(0,120,212,0.25); color: #fff; }
+
+  .fe-content {
+    flex: 1;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 4px;
+    align-content: start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fe-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+    text-align: center;
+  }
+  .fe-item:hover { background: rgba(255,255,255,0.1); }
+  .fe-item.selected { background: rgba(0,120,212,0.3); }
+  .fe-item .icon { font-size: 36px; }
+  .fe-item .name { font-size: 11px; color: var(--text-secondary); line-height: 1.3; }
+
+  /* NOTEPAD */
+  .notepad-toolbar {
+    display: flex;
+    padding: 4px 8px;
+    gap: 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 13px;
+  }
+  .np-menu {
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .np-menu:hover { background: var(--hover); }
+  .notepad-area {
+    width: 100%;
+    height: calc(100% - 33px);
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-family: 'Cascadia Code', 'Courier New', monospace;
+    font-size: 14px;
+    padding: 12px;
+    resize: none;
+    outline: none;
+    line-height: 1.6;
+  }
+
+  /* SETTINGS */
+  .settings-body { display: flex; height: 100%; }
+  .settings-nav {
+    width: 240px;
+    padding: 16px 8px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: background 0.1s;
+    margin-bottom: 2px;
+  }
+  .settings-nav-item:hover { background: var(--hover); color: #fff; }
+  .settings-nav-item.active { background: rgba(0,120,212,0.2); color: #fff; }
+  .settings-nav-item .icon { font-size: 18px; }
+  .settings-content {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settings-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+  .settings-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .settings-card-info h4 { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .settings-card-info p { font-size: 12px; color: var(--text-secondary); }
+  .toggle {
+    width: 46px; height: 24px;
+    background: var(--accent);
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle.off { background: rgba(255,255,255,0.2); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px;
+    left: 25px;
+    transition: left 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+  .toggle.off::after { left: 3px; }
+
+  /* CALCULATOR */
+  .calc-body {
+    padding: 16px;
+    background: rgba(30,30,30,0.8);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .calc-display {
+    background: transparent;
+    text-align: right;
+    padding: 8px 4px;
+    flex-shrink: 0;
+  }
+  .calc-expression { font-size: 13px; color: var(--text-secondary); min-height: 20px; }
+  .calc-number { font-size: 40px; font-weight: 300; line-height: 1; }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    flex: 1;
+  }
+  .calc-btn {
+    background: rgba(255,255,255,0.07);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.1s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    min-height: 44px;
+  }
+  .calc-btn:hover { background: rgba(255,255,255,0.14); }
+  .calc-btn:active { background: rgba(255,255,255,0.22); }
+  .calc-btn.accent { background: rgba(0,120,212,0.5); }
+  .calc-btn.accent:hover { background: rgba(0,120,212,0.7); }
+  .calc-btn.equals { background: var(--accent); }
+  .calc-btn.equals:hover { background: #106ebe; }
+  .calc-btn.light { background: rgba(255,255,255,0.12); }
+
+  /* CONTEXT MENU */
+  #context-menu {
+    position: fixed;
+    background: rgba(32,32,32,0.95);
+    backdrop-filter: blur(30px);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    z-index: 99999;
+    min-width: 200px;
+    display: none;
+    animation: ctxOpen 0.12s ease;
+  }
+
+  @keyframes ctxOpen {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.1s;
+  }
+  .ctx-item:hover { background: var(--hover); }
+  .ctx-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .ctx-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 4px 0; }
+
+  /* NOTIFICATION */
+  #notifications {
+    position: fixed;
+    bottom: calc(var(--taskbar-height) + 12px);
+    right: 12px;
+    z-index: 9200;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .notif {
+    background: rgba(42,42,46,0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    width: 360px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    animation: notifIn 0.3s cubic-bezier(0.34,1.2,0.64,1);
+  }
+  @keyframes notifIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .notif-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .notif-icon { font-size: 16px; }
+  .notif-app { font-size: 12px; font-weight: 600; color: var(--text-secondary); flex: 1; }
+  .notif-close { cursor: pointer; color: var(--text-secondary); font-size: 16px; }
+  .notif-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .notif-body { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+
+  /* WIDGETS PANEL */
+  #widgets-panel {
+    position: fixed;
+    top: 0;
+    left: -400px;
+    width: 380px;
+    height: calc(100vh - var(--taskbar-height));
+    background: rgba(22,22,26,0.96);
+    backdrop-filter: blur(40px);
+    border-right: 1px solid var(--glass-border);
+    z-index: 8000;
+    padding: 24px 16px;
+    transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
+    overflow-y: auto;
+  }
+  #widgets-panel.open { left: 0; }
+  .widget-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .widget-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .weather-main { display: flex; align-items: center; gap: 16px; }
+  .weather-temp { font-size: 48px; font-weight: 200; line-height: 1; }
+  .weather-icon { font-size: 52px; }
+  .weather-desc { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+  .news-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .news-item:last-child { border-bottom: none; }
+  .news-source { font-size: 11px; color: var(--accent-light); margin-bottom: 4px; }
+  .news-headline { font-size: 13px; line-height: 1.4; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
+
+  /* Action center */
+  #action-center {
+    position: fixed;
+    bottom: calc(var(--taskbar-height) + 8px);
+    right: 8px;
+    width: 360px;
+    background: rgba(28,28,28,0.96);
+    backdrop-filter: blur(40px);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 20px;
+    z-index: 9300;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.7);
+    display: none;
+    animation: acOpen 0.18s ease;
+  }
+  #action-center.visible { display: block; }
+  @keyframes acOpen {
+    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .ac-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .ac-tile {
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: center;
+  }
+  .ac-tile:hover { background: rgba(255,255,255,0.15); }
+  .ac-tile.on { background: rgba(0,120,212,0.4); }
+  .ac-tile .icon { font-size: 20px; margin-bottom: 4px; }
+  .ac-tile .label { font-size: 11px; color: var(--text-secondary); }
+  .ac-slider { margin-bottom: 12px; }
+  .ac-slider label { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  input[type=range] {
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px; height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+
+  .snap-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    pointer-events: none;
+  }
+  .snap-zone {
+    position: absolute;
+    background: rgba(0,120,212,0.2);
+    border: 2px solid rgba(0,120,212,0.5);
+    border-radius: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .snap-zone.visible { opacity: 1; }
+
+  /* Taskbar search */
+  #taskbar-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 0 14px;
+    height: 36px;
+    cursor: text;
+    min-width: 200px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #taskbar-search:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); }
+  #taskbar-search span { font-size: 13px; color: rgba(255,255,255,0.5); }
+  #taskbar-search .search-icon { font-size: 14px; color: rgba(255,255,255,0.5); }
+
+  .sep { width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 4px; }
+
+  /* Touch / Mobile */
+  html { touch-action: manipulation; }
+  /* Ensure ALL tappable things in windows fire click events */
+  .window-content { touch-action: auto; -webkit-overflow-scrolling: touch; }
+  .window-content * { -webkit-tap-highlight-color: rgba(0,120,212,0.18); }
+  /* Bigger tap targets for window controls on mobile */
+  @media (pointer: coarse) {
+    .wc-btn { width: 52px; height: 44px; }
+    .fe-sidebar-item { padding: 12px 8px; font-size: 14px; min-height: 44px; display:flex; align-items:center; }
+    .fe-item { padding: 14px 8px; min-height: 80px; }
+    .fe-item .icon { font-size: 40px; }
+    .settings-nav-item { min-height: 48px; padding: 12px; font-size: 14px; }
+    .settings-card { padding: 18px 16px; }
+    .toggle { width: 52px; height: 28px; }
+    .toggle::after { width: 22px; height: 22px; top: 3px; left: 27px; }
+    .toggle.off::after { left: 3px; }
+    .calc-btn { font-size: 20px; border-radius: 10px; }
+    .np-menu { padding: 10px 14px; font-size: 15px; min-height: 44px; display:flex; align-items:center; }
+    .taskbar-btn { width: 48px; height: 44px; }
+    .tray-icon { width: 40px; height: 44px; }
+    .fe-nav-btn { width: 40px; height: 40px; font-size: 18px; }
+    .fe-toolbar { padding: 6px; }
+    .fe-address { font-size: 14px; padding: 8px 12px; }
+    .ctx-item { padding: 14px 16px; font-size: 15px; min-height: 48px; }
+    .ac-tile { padding: 16px 8px; }
+    .rec-item { padding: 14px 10px; }
+    .start-app { padding: 14px 8px; }
+    .start-app .app-icon { font-size: 34px; }
+    .desktop-icon { width: 72px; }
+  }
+  .desktop-icon { transition: background 0.1s, transform 0.1s; }
+  .desktop-icon:active { background: rgba(0,120,212,0.4) !important; transform: scale(0.93); }
+  .taskbar-btn:active { background: rgba(255,255,255,0.22) !important; }
+  .start-app:active { background: rgba(255,255,255,0.18) !important; transform: scale(0.95); }
+  .wc-btn:active { background: rgba(255,255,255,0.25) !important; }
+  .wc-btn.close:active { background: #c42b1c !important; }
+  .fe-sidebar-item:active, .fe-item:active, .ac-tile:active, .tray-icon:active, .ctx-item:active { opacity: 0.7; }
+  @media (max-width: 700px) {
+    #taskbar-search { display: none; }
+    .sep { display: none; }
+    #start-menu { width: 96vw; left: 2vw; transform: none !important; }
+    #action-center { width: 92vw; right: 4vw; }
+    #pinned-apps { grid-template-columns: repeat(4, 1fr); }
+    .window { min-width: 260px; }
+  }
+
+</style>
+</head>
+<body>
+
+<!-- DESKTOP -->
+<div id="desktop" ondblclick="desktopDblClick(event)">
+
+  <!-- Desktop Icons (single tap opens app) -->
+  <div class="desktop-icon" style="top:20px;left:20px" onclick="selectIcon(this);openApp('explorer')">
+    <div class="icon-img">🗂️</div>
+    <span>File Explorer</span>
+  </div>
+  <div class="desktop-icon" style="top:110px;left:20px" onclick="selectIcon(this);openApp('notepad')">
+    <div class="icon-img">📝</div>
+    <span>Notepad</span>
+  </div>
+  <div class="desktop-icon" style="top:200px;left:20px" onclick="selectIcon(this);openApp('settings')">
+    <div class="icon-img">⚙️</div>
+    <span>Settings</span>
+  </div>
+  <div class="desktop-icon" style="top:290px;left:20px" onclick="selectIcon(this);openApp('calc')">
+    <div class="icon-img">🧮</div>
+    <span>Calculator</span>
+  </div>
+  <div class="desktop-icon" style="top:380px;left:20px" onclick="selectIcon(this);openApp('browser')">
+    <div class="icon-img">🌐</div>
+    <span>Edge</span>
+  </div>
+  <div class="desktop-icon" style="top:470px;left:20px" onclick="selectIcon(this);showNotification('Recycle Bin','Recycle Bin is empty.')">
+    <div class="icon-img">🗑️</div>
+    <span>Recycle Bin</span>
+  </div>
+</div>
+
+<!-- TASKBAR -->
+<div id="taskbar">
+  <div id="taskbar-left">
+    <div class="tray-icon" onclick="toggleWidgets()" title="Widgets">⊞</div>
+  </div>
+
+  <div id="taskbar-center">
+    <div id="start-btn" class="taskbar-btn" onclick="toggleStart()" title="Start">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='2' width='9' height='9' fill='%2300adef'/%3E%3Crect x='13' y='2' width='9' height='9' fill='%2300adef'/%3E%3Crect x='2' y='13' width='9' height='9' fill='%2300adef'/%3E%3Crect x='13' y='13' width='9' height='9' fill='%2300adef'/%3E%3C/svg%3E" width="20" height="20">
+    </div>
+    <div id="taskbar-search" onclick="openApp('notepad')">
+      <span class="search-icon">🔍</span>
+      <span>Search</span>
+    </div>
+    <div class="sep"></div>
+    <div class="taskbar-btn" id="tb-explorer" onclick="openApp('explorer')" title="File Explorer">🗂️</div>
+    <div class="taskbar-btn" id="tb-edge" onclick="openApp('browser')" title="Edge">🌐</div>
+    <div class="taskbar-btn" id="tb-notepad" onclick="openApp('notepad')" title="Notepad">📝</div>
+    <div class="taskbar-btn" id="tb-calc" onclick="openApp('calc')" title="Calculator">🧮</div>
+    <div class="taskbar-btn" id="tb-settings" onclick="openApp('settings')" title="Settings">⚙️</div>
+  </div>
+
+  <div id="taskbar-right">
+    <div class="tray-icon" title="Network">📶</div>
+    <div class="tray-icon" title="Volume">🔊</div>
+    <div class="tray-icon" title="Battery">🔋</div>
+    <div class="tray-icon" onclick="toggleActionCenter()" title="Action Center">🔔</div>
+    <div id="clock" onclick="toggleActionCenter()">
+      <div id="clock-time">12:00</div>
+      <div id="clock-date">1/1/2025</div>
+    </div>
+    <div class="tray-icon" title="Show Desktop" onclick="minimizeAll()" style="border-left:1px solid rgba(255,255,255,0.1); border-radius:0 0 0 0; width:8px;">　</div>
+  </div>
+</div>
+
+<!-- START MENU -->
+<div id="start-menu">
+  <input type="text" id="start-search" placeholder="🔍  Type here to search">
+  <div class="start-section-title">Pinned</div>
+  <div id="pinned-apps">
+    <div class="start-app" onclick="openApp('explorer')"><div class="app-icon">🗂️</div><div class="app-name">File Explorer</div></div>
+    <div class="start-app" onclick="openApp('browser')"><div class="app-icon">🌐</div><div class="app-name">Edge</div></div>
+    <div class="start-app" onclick="openApp('settings')"><div class="app-icon">⚙️</div><div class="app-name">Settings</div></div>
+    <div class="start-app" onclick="openApp('notepad')"><div class="app-icon">📝</div><div class="app-name">Notepad</div></div>
+    <div class="start-app" onclick="openApp('calc')"><div class="app-icon">🧮</div><div class="app-name">Calculator</div></div>
+    <div class="start-app"><div class="app-icon">📧</div><div class="app-name">Mail</div></div>
+    <div class="start-app"><div class="app-icon">📅</div><div class="app-name">Calendar</div></div>
+    <div class="start-app"><div class="app-icon">📸</div><div class="app-name">Photos</div></div>
+    <div class="start-app"><div class="app-icon">🎵</div><div class="app-name">Spotify</div></div>
+    <div class="start-app"><div class="app-icon">🎮</div><div class="app-name">Xbox</div></div>
+    <div class="start-app"><div class="app-icon">🛒</div><div class="app-name">Store</div></div>
+    <div class="start-app"><div class="app-icon">💬</div><div class="app-name">Teams</div></div>
+  </div>
+  <div class="start-section-title">Recommended</div>
+  <div id="recommended">
+    <div class="rec-item"><div class="rec-icon">📄</div><div class="rec-info"><div class="rec-name">Document.docx</div><div class="rec-time">Just now</div></div></div>
+    <div class="rec-item"><div class="rec-icon">🖼️</div><div class="rec-info"><div class="rec-name">Screenshot.png</div><div class="rec-time">2 minutes ago</div></div></div>
+    <div class="rec-item"><div class="rec-icon">📊</div><div class="rec-info"><div class="rec-name">Report.xlsx</div><div class="rec-time">1 hour ago</div></div></div>
+    <div class="rec-item"><div class="rec-icon">🎵</div><div class="rec-info"><div class="rec-name">Playlist.mp3</div><div class="rec-time">Yesterday</div></div></div>
+  </div>
+  <div class="start-footer">
+    <div class="user-info">
+      <div class="user-avatar">JD</div>
+      <div class="user-name">John Doe</div>
+    </div>
+    <div class="power-btn" onclick="showPowerMenu()">⏻</div>
+  </div>
+</div>
+
+<!-- ACTION CENTER -->
+<div id="action-center">
+  <div class="ac-grid">
+    <div class="ac-tile on" onclick="this.classList.toggle('on')"><div class="icon">📶</div><div class="label">Wi-Fi</div></div>
+    <div class="ac-tile on" onclick="this.classList.toggle('on')"><div class="icon">🦷</div><div class="label">Bluetooth</div></div>
+    <div class="ac-tile" onclick="this.classList.toggle('on')"><div class="icon">✈️</div><div class="label">Airplane</div></div>
+    <div class="ac-tile on" onclick="this.classList.toggle('on')"><div class="icon">🌙</div><div class="label">Focus</div></div>
+    <div class="ac-tile" onclick="this.classList.toggle('on')"><div class="icon">♿</div><div class="label">Accessibility</div></div>
+    <div class="ac-tile" onclick="this.classList.toggle('on')"><div class="icon">🔒</div><div class="label">VPN</div></div>
+  </div>
+  <div class="ac-slider">
+    <label>🔊 Volume<span id="vol-val" style="margin-left:auto">80</span></label>
+    <input type="range" min="0" max="100" value="80" oninput="document.getElementById('vol-val').textContent=this.value">
+  </div>
+  <div class="ac-slider">
+    <label>☀️ Brightness<span id="bri-val" style="margin-left:auto">100</span></label>
+    <input type="range" min="0" max="100" value="100" oninput="document.getElementById('bri-val').textContent=this.value;document.getElementById('desktop').style.filter='brightness('+this.value/100+')'">
+  </div>
+</div>
+
+<!-- WIDGETS PANEL -->
+<div id="widgets-panel">
+  <div style="font-size:18px;font-weight:600;margin-bottom:20px;">Widgets</div>
+  <div class="widget-card">
+    <div class="widget-title">☁️ Weather</div>
+    <div class="weather-main">
+      <div class="weather-icon">⛅</div>
+      <div>
+        <div class="weather-temp">72°</div>
+        <div class="weather-desc">Partly Cloudy</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">H:78° · L:65°</div>
+      </div>
+    </div>
+  </div>
+  <div class="widget-card">
+    <div class="widget-title">📰 News</div>
+    <div class="news-item"><div class="news-source">TECHNOLOGY</div><div class="news-headline">Windows 11 receives major update with new AI features</div></div>
+    <div class="news-item"><div class="news-source">WORLD</div><div class="news-headline">Global tech summit brings together industry leaders</div></div>
+    <div class="news-item"><div class="news-source">SPORTS</div><div class="news-headline">Championship finals draw record viewership worldwide</div></div>
+  </div>
+  <div class="widget-card">
+    <div class="widget-title">📅 Calendar</div>
+    <div style="font-size:28px;font-weight:300;margin-bottom:4px;" id="w-date">—</div>
+    <div style="font-size:13px;color:var(--text-secondary);">No upcoming events</div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="context-menu">
+  <div class="ctx-item" onclick="hideContextMenu()"><span class="icon">🔄</span> Refresh</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="hideContextMenu()"><span class="icon">📋</span> Paste</div>
+  <div class="ctx-item" onclick="hideContextMenu()"><span class="icon">🔗</span> Paste Shortcut</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="openApp('settings');hideContextMenu()"><span class="icon">🖥️</span> Display Settings</div>
+  <div class="ctx-item" onclick="openApp('settings');hideContextMenu()"><span class="icon">🎨</span> Personalize</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="hideContextMenu()"><span class="icon">➡️</span> Show More Options</div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="notifications"></div>
+
+<!-- SNAP OVERLAY -->
+<div class="snap-overlay" id="snap-overlay">
+  <div class="snap-zone" id="snap-left" style="top:8px;left:8px;width:49%;bottom:8px;"></div>
+  <div class="snap-zone" id="snap-right" style="top:8px;right:8px;width:49%;bottom:8px;"></div>
+  <div class="snap-zone" id="snap-max" style="top:8px;left:25%;right:25%;height:48px;"></div>
+</div>
+
+<script>
+// ============ STATE ============
+let windowZ = 1000;
+let openWindows = {};
+let startVisible = false;
+let actionCenterVisible = false;
+
+// ============ CLOCK ============
+function updateClock() {
+  const now = new Date();
+  const t = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const d = now.toLocaleDateString([], {month:'numeric',day:'numeric',year:'numeric'});
+  document.getElementById('clock-time').textContent = t;
+  document.getElementById('clock-date').textContent = d;
+  document.getElementById('w-date').textContent = now.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ============ START MENU ============
+function toggleStart() {
+  const menu = document.getElementById('start-menu');
+  startVisible = !startVisible;
+  if (startVisible) {
+    menu.style.display = 'flex';
+    requestAnimationFrame(() => menu.classList.add('visible'));
+    if (actionCenterVisible) toggleActionCenter();
+  } else {
+    menu.classList.remove('visible');
+    setTimeout(() => { if (!startVisible) menu.style.display = 'none'; }, 200);
+  }
+  document.getElementById('start-btn').classList.toggle('active', startVisible);
+}
+
+function closeStart() {
+  if (startVisible) {
+    startVisible = false;
+    const menu = document.getElementById('start-menu');
+    menu.classList.remove('visible');
+    setTimeout(() => menu.style.display = 'none', 200);
+    document.getElementById('start-btn').classList.remove('active');
+  }
+}
+
+// ============ ACTION CENTER ============
+function toggleActionCenter() {
+  const ac = document.getElementById('action-center');
+  actionCenterVisible = !actionCenterVisible;
+  if (actionCenterVisible) {
+    ac.classList.add('visible');
+    closeStart();
+  } else {
+    ac.classList.remove('visible');
+  }
+}
+
+// ============ WIDGETS ============
+function toggleWidgets() {
+  document.getElementById('widgets-panel').classList.toggle('open');
+}
+
+// ============ CONTEXT MENU ============
+document.getElementById('desktop').addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  showContextMenu(e.clientX, e.clientY);
+});
+
+function showContextMenu(x, y) {
+  const menu = document.getElementById('context-menu');
+  menu.style.display = 'block';
+  const w = menu.offsetWidth, h = menu.offsetHeight;
+  x = Math.min(x, window.innerWidth - w - 4);
+  y = Math.min(y, window.innerHeight - h - 4);
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+function hideContextMenu() {
+  document.getElementById('context-menu').style.display = 'none';
+}
+
+// ============ GLOBAL CLICKS ============
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#start-menu') && !e.target.closest('#start-btn')) closeStart();
+  if (!e.target.closest('.np-menu')) { const d = document.getElementById('np-dropdown'); if(d) d.style.display='none'; }
+  if (!e.target.closest('#action-center') && !e.target.closest('#clock') && !e.target.closest('.tray-icon')) {
+    document.getElementById('action-center').classList.remove('visible');
+    actionCenterVisible = false;
+  }
+  if (!e.target.closest('#context-menu')) hideContextMenu();
+  if (!e.target.closest('#widgets-panel') && !e.target.closest('#taskbar-left')) {
+    document.getElementById('widgets-panel').classList.remove('open');
+  }
+  if (!e.target.closest('.desktop-icon')) {
+    document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+  }
+});
+
+function selectIcon(el) {
+  document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+  event.stopPropagation();
+}
+
+function desktopDblClick(e) {
+  if (e.target === document.getElementById('desktop') || e.target.id === 'desktop') return;
+}
+
+// ============ WINDOW SYSTEM ============
+const isMobile = () => window.innerWidth <= 900 || ('ontouchstart' in window);
+
+function createWindow(id, title, icon, width, height, contentHTML) {
+  if (openWindows[id] && openWindows[id].el) {
+    const win = openWindows[id].el;
+    if (win.classList.contains('minimized')) {
+      win.classList.remove('minimized');
+      openWindows[id].minimized = false;
+    }
+    focusWindow(win);
+    return;
+  }
+
+  const win = document.createElement('div');
+  win.className = 'window focused';
+  win.dataset.id = id;
+
+  // Mobile: open maximized. Desktop: clamp to viewport.
+  const mobile = isMobile();
+  const vw = window.innerWidth, vh = window.innerHeight - 48;
+  const w = mobile ? vw : Math.min(width, vw - 40);
+  const h = mobile ? vh : Math.min(height, vh - 20);
+  const x = mobile ? 0 : Math.max(0, Math.min(80 + (Object.keys(openWindows).length * 24) % 180, vw - w - 10));
+  const y = mobile ? 0 : Math.max(0, Math.min(40 + (Object.keys(openWindows).length * 16) % 100, vh - h - 10));
+
+  win.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${++windowZ}`;
+  if (mobile) win.classList.add('maximized');
+
+  win.innerHTML = `
+    <div class="resize-handle resize-n" data-dir="n"></div>
+    <div class="resize-handle resize-s" data-dir="s"></div>
+    <div class="resize-handle resize-e" data-dir="e"></div>
+    <div class="resize-handle resize-w" data-dir="w"></div>
+    <div class="resize-handle resize-ne" data-dir="ne"></div>
+    <div class="resize-handle resize-nw" data-dir="nw"></div>
+    <div class="resize-handle resize-se" data-dir="se"></div>
+    <div class="resize-handle resize-sw" data-dir="sw"></div>
+    <div class="titlebar">
+      <span class="titlebar-icon">${icon}</span>
+      <span class="titlebar-title">${title}</span>
+      <div class="window-controls">
+        <div class="wc-btn minimize" onclick="minimizeWindow('${id}')">
+          <svg viewBox="0 0 12 12" fill="none"><rect y="5.5" width="12" height="1" fill="currentColor"/></svg>
+        </div>
+        <div class="wc-btn maximize" onclick="maximizeWindow('${id}')">
+          <svg viewBox="0 0 12 12" fill="none"><rect x="0.5" y="0.5" width="11" height="11" stroke="currentColor"/></svg>
+        </div>
+        <div class="wc-btn close" onclick="closeWindow('${id}')">
+          <svg viewBox="0 0 12 12" fill="none"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.2"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="window-content">${contentHTML}</div>
+  `;
+
+  document.body.appendChild(win);
+  openWindows[id] = { el: win, minimized: false, maximized: mobile, prevRect: { left: x, top: y, width: w, height: h } };
+
+  makeDraggable(win);
+  makeResizable(win);
+  win.addEventListener('mousedown', () => focusWindow(win));
+
+  // Mark taskbar button
+  const tb = document.getElementById('tb-' + id);
+  if (tb) tb.classList.add('open');
+
+  closeStart();
+}
+
+function focusWindow(win) {
+  document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
+  win.classList.add('focused');
+  win.style.zIndex = ++windowZ;
+}
+
+function minimizeWindow(id) {
+  const data = openWindows[id];
+  if (!data) return;
+  data.el.classList.add('minimized');
+  data.minimized = true;
+  const tb = document.getElementById('tb-' + id);
+  if (tb) tb.classList.remove('active');
+}
+
+function maximizeWindow(id) {
+  const data = openWindows[id];
+  if (!data) return;
+  // On mobile, maximize button just closes (no floating windows)
+  if (isMobile()) { closeWindow(id); return; }
+  if (data.maximized) {
+    const r = data.prevRect;
+    data.el.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;z-index:${data.el.style.zIndex}`;
+    data.el.classList.remove('maximized');
+    data.maximized = false;
+  } else {
+    data.prevRect = { left: data.el.offsetLeft, top: data.el.offsetTop, width: data.el.offsetWidth, height: data.el.offsetHeight };
+    data.el.classList.add('maximized');
+    data.maximized = true;
+  }
+}
+
+function closeWindow(id) {
+  const data = openWindows[id];
+  if (!data) return;
+  data.el.style.transition = 'transform 0.15s ease, opacity 0.15s ease';
+  data.el.style.transform = 'scale(0.92)';
+  data.el.style.opacity = '0';
+  setTimeout(() => {
+    data.el.remove();
+    delete openWindows[id];
+  }, 150);
+  const tb = document.getElementById('tb-' + id);
+  if (tb) { tb.classList.remove('open'); tb.classList.remove('active'); }
+}
+
+// ============ DRAG (mouse + touch) ============
+function makeDraggable(win) {
+  const tb = win.querySelector('.titlebar');
+  let dragging = false, ox, oy;
+
+  function startDrag(cx, cy) {
+    if (openWindows[win.dataset.id]?.maximized) return;
+    dragging = true;
+    ox = cx - win.offsetLeft;
+    oy = cy - win.offsetTop;
+    win.style.transition = 'none';
+    document.getElementById('snap-overlay').style.display = 'block';
+    focusWindow(win);
+  }
+
+  function moveDrag(cx, cy) {
+    if (!dragging) return;
+    win.style.left = (cx - ox) + 'px';
+    win.style.top = Math.max(0, cy - oy) + 'px';
+    document.getElementById('snap-left').classList.toggle('visible', cx < 20);
+    document.getElementById('snap-right').classList.toggle('visible', cx > window.innerWidth - 20);
+    document.getElementById('snap-max').classList.toggle('visible', cy < 10);
+  }
+
+  function endDrag(cx, cy) {
+    if (!dragging) return;
+    dragging = false;
+    document.getElementById('snap-overlay').style.display = 'none';
+    document.querySelectorAll('.snap-zone').forEach(z => z.classList.remove('visible'));
+    const id = win.dataset.id;
+    if (cx < 20) {
+      openWindows[id].prevRect = { left: win.offsetLeft, top: win.offsetTop, width: win.offsetWidth, height: win.offsetHeight };
+      win.style.cssText = `left:0;top:0;width:50vw;height:calc(100vh - 48px);z-index:${win.style.zIndex}`;
+    } else if (cx > window.innerWidth - 20) {
+      openWindows[id].prevRect = { left: win.offsetLeft, top: win.offsetTop, width: win.offsetWidth, height: win.offsetHeight };
+      win.style.cssText = `left:50vw;top:0;width:50vw;height:calc(100vh - 48px);z-index:${win.style.zIndex}`;
+    } else if (cy < 5) {
+      maximizeWindow(id);
+    }
+  }
+
+  // Mouse
+  tb.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.window-controls')) return;
+    startDrag(e.clientX, e.clientY);
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+  document.addEventListener('mouseup', (e) => endDrag(e.clientX, e.clientY));
+
+  // Touch drag - only prevent default after movement to allow taps on controls
+  let touchMoved = false;
+  tb.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.window-controls')) return;
+    touchMoved = false;
+    const t = e.touches[0];
+    startDrag(t.clientX, t.clientY);
+  }, { passive: true });
+  tb.addEventListener('touchmove', (e) => {
+    touchMoved = true;
+    const t = e.touches[0];
+    moveDrag(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+  tb.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    if (touchMoved) endDrag(t.clientX, t.clientY);
+    else dragging = false; // it was a tap, not a drag
+  });
+
+  // Double-click titlebar to maximize
+  tb.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.window-controls')) return;
+    maximizeWindow(win.dataset.id);
+  });
+}
+
+// ============ RESIZE ============
+function makeResizable(win) {
+  win.querySelectorAll('.resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+      if (openWindows[win.dataset.id]?.maximized) return;
+      e.stopPropagation();
+      const dir = handle.dataset.dir;
+      const startX = e.clientX, startY = e.clientY;
+      const startW = win.offsetWidth, startH = win.offsetHeight;
+      const startL = win.offsetLeft, startT = win.offsetTop;
+
+      const onMove = (e) => {
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        if (dir.includes('e')) win.style.width = Math.max(300, startW + dx) + 'px';
+        if (dir.includes('s')) win.style.height = Math.max(200, startH + dy) + 'px';
+        if (dir.includes('w')) { win.style.width = Math.max(300, startW - dx) + 'px'; win.style.left = Math.min(startL + dx, startL + startW - 300) + 'px'; }
+        if (dir.includes('n')) { win.style.height = Math.max(200, startH - dy) + 'px'; win.style.top = Math.min(startT + dy, startT + startH - 200) + 'px'; }
+      };
+      const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    });
+  });
+}
+
+// ============ APP LAUNCHERS ============
+function openApp(id) {
+  closeStart();
+  const tb = document.getElementById('tb-' + id);
+
+  switch(id) {
+    case 'explorer': openExplorer(); break;
+    case 'notepad': openNotepad(); break;
+    case 'settings': openSettings(); break;
+    case 'calc': openCalc(); break;
+    case 'browser': openBrowser(); break;
+  }
+  if (tb) tb.classList.add('open');
+}
+
+function openExplorer() {
+  // Folder data
+  const feData = {
+    'Quick Access': [
+      {icon:'📁',name:'Documents',type:'folder',target:'Documents'},
+      {icon:'🖼️',name:'Pictures',type:'folder',target:'Pictures'},
+      {icon:'⬇️',name:'Downloads',type:'folder',target:'Downloads'},
+      {icon:'🎵',name:'Music',type:'folder',target:'Music'},
+      {icon:'🎬',name:'Videos',type:'folder',target:'Videos'},
+      {icon:'🖥️',name:'Desktop',type:'folder',target:'Desktop'},
+    ],
+    'Desktop': [
+      {icon:'📄',name:'resume.docx',type:'file'},{icon:'🖼️',name:'wallpaper.jpg',type:'file'},
+      {icon:'📝',name:'todo.txt',type:'file'},{icon:'🔗',name:'Chrome.lnk',type:'file'},
+    ],
+    'Downloads': [
+      {icon:'💿',name:'setup.exe',type:'file'},{icon:'🗜️',name:'archive.zip',type:'file'},
+      {icon:'🎵',name:'song.mp3',type:'file'},{icon:'📄',name:'invoice.pdf',type:'file'},
+    ],
+    'Documents': [
+      {icon:'📄',name:'report.docx',type:'file'},{icon:'📊',name:'data.xlsx',type:'file'},
+      {icon:'📝',name:'notes.txt',type:'file'},{icon:'📁',name:'Projects',type:'folder',target:'Projects'},
+      {icon:'📁',name:'Work',type:'folder',target:'Work'},
+    ],
+    'Pictures': [
+      {icon:'🖼️',name:'photo.png',type:'file'},{icon:'🖼️',name:'screenshot.jpg',type:'file'},
+      {icon:'🖼️',name:'avatar.png',type:'file'},{icon:'📁',name:'Vacation',type:'folder',target:'Vacation'},
+    ],
+    'Music': [
+      {icon:'🎵',name:'track1.mp3',type:'file'},{icon:'🎵',name:'track2.mp3',type:'file'},
+      {icon:'📁',name:'Albums',type:'folder',target:'Albums'},
+    ],
+    'Videos': [
+      {icon:'🎬',name:'clip.mp4',type:'file'},{icon:'🎬',name:'movie.mkv',type:'file'},
+    ],
+    'Projects': [
+      {icon:'📁',name:'WebApp',type:'folder',target:'WebApp'},{icon:'📄',name:'README.md',type:'file'},
+    ],
+    'Work': [
+      {icon:'📊',name:'budget.xlsx',type:'file'},{icon:'📄',name:'report_q4.docx',type:'file'},
+    ],
+    'Vacation': [
+      {icon:'🖼️',name:'beach.jpg',type:'file'},{icon:'🖼️',name:'sunset.jpg',type:'file'},
+    ],
+    'Albums': [{icon:'🎵',name:'album1.mp3',type:'file'}],
+    'WebApp':  [{icon:'📄',name:'index.html',type:'file'},{icon:'📄',name:'app.js',type:'file'}],
+    'Local Disk (C:)': [
+      {icon:'📁',name:'Windows',type:'folder',target:'Windows'},{icon:'📁',name:'Users',type:'folder',target:'Users'},
+      {icon:'📁',name:'Program Files',type:'folder',target:'ProgramFiles'},
+    ],
+    'DVD Drive (D:)':  [{icon:'💿',name:'(Empty)',type:'file'}],
+    'Network':         [{icon:'🖥️',name:'No devices found',type:'file'}],
+    'Windows':         [{icon:'📁',name:'System32',type:'folder',target:'System32'}],
+    'Users':           [{icon:'📁',name:'John',type:'folder',target:'Documents'}],
+    'ProgramFiles':    [{icon:'📁',name:'Microsoft Office',type:'folder',target:'Documents'}],
+    'System32':        [{icon:'💿',name:'system.dll',type:'file'},{icon:'💿',name:'kernel32.dll',type:'file'}],
+  };
+
+  const content = `<div id="fe-toolbar" class="fe-toolbar">
+      <div class="fe-nav-btn" id="fe-back" onclick="feNav('back')">←</div>
+      <div class="fe-nav-btn" id="fe-fwd"  onclick="feNav('fwd')">→</div>
+      <div class="fe-nav-btn" onclick="feNav('up')">↑</div>
+      <input class="fe-address" id="fe-addr" value="Quick Access" readonly>
+      <div class="fe-nav-btn" onclick="feSearch()">🔍</div>
+    </div>
+    <div class="fe-body">
+      <div class="fe-sidebar" id="fe-sidebar">
+        <div class="fe-sidebar-item active" data-folder="Quick Access">🏠 Quick Access</div>
+        <div class="fe-sidebar-item" data-folder="Desktop">🖥️ Desktop</div>
+        <div class="fe-sidebar-item" data-folder="Downloads">⬇️ Downloads</div>
+        <div class="fe-sidebar-item" data-folder="Documents">📄 Documents</div>
+        <div class="fe-sidebar-item" data-folder="Pictures">🖼️ Pictures</div>
+        <div class="fe-sidebar-item" data-folder="Music">🎵 Music</div>
+        <div class="fe-sidebar-item" data-folder="Videos">🎬 Videos</div>
+        <div class="fe-sidebar-item" style="margin-top:12px;font-size:11px;color:var(--text-secondary);padding:4px 8px;pointer-events:none">This PC</div>
+        <div class="fe-sidebar-item" data-folder="Local Disk (C:)">💾 Local Disk (C:)</div>
+        <div class="fe-sidebar-item" data-folder="DVD Drive (D:)">📀 DVD Drive (D:)</div>
+        <div class="fe-sidebar-item" style="margin-top:12px;font-size:11px;color:var(--text-secondary);padding:4px 8px;pointer-events:none">Network</div>
+        <div class="fe-sidebar-item" data-folder="Network">🌐 Network</div>
+      </div>
+      <div class="fe-content" id="fe-content"></div>
+    </div>`;
+
+  createWindow('explorer', 'File Explorer', '🗂️', 800, 520, content);
+
+  // State
+  window._feData = feData;
+  window._feHistory = ['Quick Access'];
+  window._feHistIdx = 0;
+
+  // Event delegation - more reliable on mobile
+  requestAnimationFrame(() => {
+    feRender('Quick Access');
+    const sidebar = document.getElementById('fe-sidebar');
+    if (sidebar) {
+      sidebar.addEventListener('click', function(e) {
+        const item = e.target.closest('.fe-sidebar-item[data-folder]');
+        if (item) feGo(item.dataset.folder, item);
+      });
+    }
+  });
+}
+
+function feRender(folder) {
+  const data = window._feData || {};
+  const items = data[folder] || [{icon:'📄',name:'(Empty folder)',type:'file'}];
+  const el = document.getElementById('fe-content');
+  const addr = document.getElementById('fe-addr');
+  if (!el) return;
+  if (addr) addr.value = folder;
+  el.innerHTML = '';
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'fe-item';
+    div.innerHTML = `<div class="icon">${item.icon}</div><div class="name">${item.name}</div>`;
+    div.addEventListener('click', function() {
+      feItemClick(this, item.name, item.type, item.target || item.name);
+    });
+    el.appendChild(div);
+  });
+}
+
+function feGo(folder, sidebarEl) {
+  // Update sidebar active state
+  if (sidebarEl) {
+    document.querySelectorAll('.fe-sidebar-item').forEach(i => i.classList.remove('active'));
+    sidebarEl.classList.add('active');
+  }
+  // Update address bar
+  const addr = document.getElementById('fe-addr');
+  if (addr) addr.value = folder;
+  // Push history
+  const hist = window._feHistory || [];
+  let idx = window._feHistIdx !== undefined ? window._feHistIdx : 0;
+  hist.splice(idx + 1);
+  hist.push(folder);
+  window._feHistory = hist;
+  window._feHistIdx = hist.length - 1;
+  feRender(folder);
+}
+
+function feNav(dir) {
+  const hist = window._feHistory || [];
+  let idx = window._feHistIdx || 0;
+  if (dir === 'back' && idx > 0) { idx--; }
+  else if (dir === 'fwd' && idx < hist.length - 1) { idx++; }
+  else if (dir === 'up') {
+    feGo('Quick Access', document.querySelector('.fe-sidebar-item'));
+    return;
+  }
+  window._feHistIdx = idx;
+  feRender(hist[idx]);
+}
+
+function feItemClick(el, name, type, target) {
+  document.querySelectorAll('.fe-item').forEach(i => i.classList.remove('selected'));
+  if (el) el.classList.add('selected');
+  if (type === 'folder') {
+    feGo(target, null);
+    return;
+  }
+  // Open file in the right app based on extension
+  const ext = name.split('.').pop().toLowerCase();
+  if (['txt','md','log','ini','cfg','js','html','css','py','json'].includes(ext)) {
+    openNotepadWithFile(name);
+  } else if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
+    openPhotosWithFile(name);
+  } else if (['mp3','wav','flac','ogg','m4a','aac'].includes(ext)) {
+    openMusicWithFile(name);
+  } else if (['mp4','mkv','avi','mov','wmv'].includes(ext)) {
+    openVideoWithFile(name);
+  } else if (['docx','doc','pdf','rtf'].includes(ext)) {
+    openDocViewerWithFile(name);
+  } else if (['xlsx','xls','csv'].includes(ext)) {
+    openDocViewerWithFile(name);
+  } else if (['exe','msi'].includes(ext)) {
+    openUAC(name);
+  } else if (['zip','rar','7z','tar'].includes(ext)) {
+    showNotification('File Explorer', 'Opening ' + name + '...', '🗜️');
+  } else if (ext === 'lnk') {
+    showNotification('Shortcut', 'Launching ' + name.replace('.lnk','') + '...', '🔗');
+  } else {
+    showNotification('Open With', 'No app found for .' + ext + ' files.', '❓');
+  }
+}
+
+function openNotepadWithFile(filename) {
+  const fakeContent = {
+    'notes.txt': 'Meeting notes - April 4\n\n- Review project timeline\n- Update stakeholders\n- Schedule follow-up\n\nTODO:\n  [ ] Send report\n  [ ] Book conference room',
+    'todo.txt': 'TODO List\n=========\n[ ] Buy groceries\n[ ] Call dentist\n[x] Finish Windows 11 project\n[ ] Update resume\n[ ] Clean apartment',
+    'README.md': '# Project\n\nThis is the README file.\n\n## Setup\nRun npm install to get started.',
+    'app.js': 'const express = require(\'express\');\nconst app = express();\n\napp.get(\'/\', (req, res) => {\n  res.send(\'Hello World!\');\n});\n\napp.listen(3000);',
+    'index.html': '<!DOCTYPE html>\n<html>\n<head><title>My App</title></head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>',
+  };
+  const body = fakeContent[filename] || ('Contents of ' + filename + '\n\nThis file was opened from File Explorer.\nYou can edit this text.');
+  openNotepadWithContent(filename, body);
+}
+
+function openNotepadWithContent(title, body) {
+  const existing = openWindows['notepad'];
+  if (existing && existing.el && !existing.el.classList.contains('minimized')) {
+    const ta = existing.el.querySelector('#np-text') || existing.el.querySelector('textarea');
+    if (ta) ta.value = body;
+    const tb = existing.el.querySelector('.titlebar-title');
+    if (tb) tb.textContent = title + ' - Notepad';
+    focusWindow(existing.el);
+    return;
+  }
+  const content = `<div class="notepad-toolbar">
+      <div class="np-menu" onclick="npMenu('File',this)">File</div>
+      <div class="np-menu" onclick="npMenu('Edit',this)">Edit</div>
+      <div class="np-menu" onclick="npMenu('Format',this)">Format</div>
+      <div class="np-menu" onclick="npMenu('View',this)">View</div>
+    </div>
+    <div id="np-dropdown" style="display:none;position:absolute;top:33px;left:0;background:rgba(30,30,30,0.98);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px;min-width:160px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.6)"></div>
+    <textarea class="notepad-area" id="np-text" spellcheck="false">${body.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>`;
+  createWindow('notepad', title + ' - Notepad', '📝', 600, 440, content);
+}
+
+function openPhotosWithFile(filename) {
+  const colors = ['#1a3a5c','#2d4a1e','#4a1e2d','#2d1e4a','#1e4a3a'];
+  const color = colors[filename.length % colors.length];
+  const content = `<div style="height:100%;display:flex;flex-direction:column;background:#1a1a1e;">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(0,0,0,0.3);flex-shrink:0;">
+      <div style="font-size:20px;cursor:pointer;padding:6px;border-radius:6px" onclick="showNotification('Photos','Previous image','📸')">‹</div>
+      <div style="flex:1;text-align:center;font-size:13px;color:rgba(255,255,255,0.7)">${filename}</div>
+      <div style="font-size:20px;cursor:pointer;padding:6px;border-radius:6px" onclick="showNotification('Photos','Next image','📸')">›</div>
+      <div style="cursor:pointer;padding:6px 10px;border-radius:6px;background:rgba(255,255,255,0.08);font-size:12px" onclick="showNotification('Photos','Edit mode','✏️')">✏️ Edit</div>
+      <div style="cursor:pointer;padding:6px 10px;border-radius:6px;background:rgba(255,255,255,0.08);font-size:12px" onclick="showNotification('Photos','Share','📤')">📤</div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;background:${color};position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 40% 40%,rgba(255,255,255,0.08),transparent 70%)"></div>
+      <div style="text-align:center;z-index:1">
+        <div style="font-size:80px;margin-bottom:16px">🖼️</div>
+        <div style="font-size:16px;color:rgba(255,255,255,0.6)">${filename}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:8px">1920 × 1080  •  2.4 MB</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;gap:16px;padding:12px;background:rgba(0,0,0,0.3);flex-shrink:0;">
+      <div style="cursor:pointer;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.08);font-size:13px" onclick="showNotification('Photos','Zoom in','🔍')">🔍+</div>
+      <div style="cursor:pointer;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.08);font-size:13px" onclick="showNotification('Photos','Rotate','🔄')">🔄</div>
+      <div style="cursor:pointer;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.08);font-size:13px" onclick="showNotification('Photos','Set as desktop background','🖥️')">Set as Background</div>
+      <div style="cursor:pointer;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.08);font-size:13px" onclick="showNotification('Photos','Deleted','🗑️')">🗑️</div>
+    </div>
+  </div>`;
+  createWindow('photos_'+filename, filename + ' - Photos', '📸', 700, 520, content);
+}
+
+function openMusicWithFile(filename) {
+  const winId = 'music';
+  const content = `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a1628,#1a2d4a);padding:24px;gap:20px;">
+    <div style="width:160px;height:160px;border-radius:50%;background:linear-gradient(135deg,#0078d4,#00b4e6);display:flex;align-items:center;justify-content:center;font-size:64px;box-shadow:0 8px 32px rgba(0,120,212,0.4)" id="music-disc">🎵</div>
+    <div style="text-align:center">
+      <div style="font-size:18px;font-weight:600">${filename.replace(/\.mp3|\.wav|\.flac/g,'')}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px">Unknown Artist • Unknown Album</div>
+    </div>
+    <div style="width:100%;max-width:320px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px"><span id="music-cur">0:00</span><span>3:42</span></div>
+      <div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px;cursor:pointer;position:relative" onclick="musicSeek(event,this)">
+        <div id="music-prog" style="width:0%;height:100%;background:var(--accent);border-radius:2px;transition:width 0.5s linear"></div>
+        <div id="music-thumb" style="position:absolute;top:-5px;left:0%;width:14px;height:14px;background:#fff;border-radius:50%;transform:translateX(-50%);transition:left 0.5s linear"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:24px;font-size:28px">
+      <div style="cursor:pointer;padding:8px" onclick="musicCmd('prev')" title="Previous">⏮</div>
+      <div style="cursor:pointer;width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 16px rgba(0,120,212,0.5)" id="music-playbtn" onclick="musicCmd('play')">▶</div>
+      <div style="cursor:pointer;padding:8px" onclick="musicCmd('next')" title="Next">⏭</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;width:100%;max-width:240px">
+      <div style="font-size:16px">🔈</div>
+      <input type="range" min="0" max="100" value="80" style="flex:1" oninput="this.previousElementSibling.textContent=this.value<30?'🔇':this.value<60?'🔉':'🔊'">
+      <div style="font-size:16px">🔊</div>
+    </div>
+  </div>`;
+  createWindow(winId, filename + ' - Media Player', '🎵', 400, 520, content);
+  // Start fake progress
+  window._musicPlaying = true;
+  window._musicPos = 0;
+  window._musicTotal = 222;
+  if (window._musicTimer) clearInterval(window._musicTimer);
+  window._musicTimer = setInterval(() => {
+    if (!window._musicPlaying) return;
+    window._musicPos = Math.min(window._musicPos + 1, window._musicTotal);
+    const pct = (window._musicPos / window._musicTotal * 100).toFixed(1);
+    const el = document.getElementById('music-prog');
+    const th = document.getElementById('music-thumb');
+    const cu = document.getElementById('music-cur');
+    if (el) el.style.width = pct + '%';
+    if (th) th.style.left = pct + '%';
+    if (cu) { const m=Math.floor(window._musicPos/60); const s=window._musicPos%60; cu.textContent=m+':'+(s<10?'0':'')+s; }
+    if (window._musicPos >= window._musicTotal) { clearInterval(window._musicTimer); window._musicPlaying=false; const b=document.getElementById('music-playbtn'); if(b) b.textContent='▶'; }
+  }, 1000);
+}
+
+function musicCmd(cmd) {
+  if (cmd === 'play') {
+    window._musicPlaying = !window._musicPlaying;
+    const btn = document.getElementById('music-playbtn');
+    if (btn) btn.textContent = window._musicPlaying ? '⏸' : '▶';
+    const disc = document.getElementById('music-disc');
+    if (disc) disc.style.animation = window._musicPlaying ? 'spin 4s linear infinite' : 'none';
+  } else if (cmd === 'prev') { window._musicPos = 0; }
+  else if (cmd === 'next') { window._musicPos = 0; showNotification('Media Player','Next track','🎵'); }
+}
+
+function musicSeek(e, bar) {
+  const rect = bar.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  window._musicPos = Math.floor(pct * (window._musicTotal || 222));
+}
+
+function openVideoWithFile(filename) {
+  const content = `<div style="height:100%;background:#000;display:flex;flex-direction:column;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative">
+      <div style="text-align:center">
+        <div style="font-size:72px">▶️</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:12px">${filename}</div>
+      </div>
+    </div>
+    <div style="padding:16px;background:rgba(0,0,0,0.6)">
+      <div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin-bottom:12px;cursor:pointer"><div style="width:35%;height:100%;background:var(--accent);border-radius:2px"></div></div>
+      <div style="display:flex;align-items:center;gap:16px;font-size:22px">
+        <div style="cursor:pointer" onclick="showNotification('Media Player','Previous','🎬')">⏮</div>
+        <div style="cursor:pointer" onclick="this.textContent=this.textContent==='▶'?'⏸':'▶'">▶</div>
+        <div style="cursor:pointer" onclick="showNotification('Media Player','Next','🎬')">⏭</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-left:8px">0:00 / 1:24:36</div>
+        <div style="margin-left:auto;cursor:pointer" onclick="showNotification('Media Player','Fullscreen','🎬')">⛶</div>
+        <div style="cursor:pointer">🔊</div>
+      </div>
+    </div>
+  </div>`;
+  createWindow('video_'+filename, filename + ' - Media Player', '🎬', 640, 400, content);
+}
+
+function openDocViewerWithFile(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const icons = {docx:'📄',doc:'📄',pdf:'📕',xlsx:'📊',xls:'📊',csv:'📊',rtf:'📄'};
+  const icon = icons[ext] || '📄';
+  const fakeText = {
+    'report.docx': 'Quarterly Report Q4 2025\n\nExecutive Summary\n─────────────────\nThis quarter saw significant growth across all business units. Revenue increased by 23% year-over-year, driven primarily by expansion into new markets.\n\nKey Highlights:\n• Total Revenue: $4.2M (+23% YoY)\n• Net Profit: $890K (+18% YoY)\n• New Customers: 142\n• Customer Retention: 94.2%\n\nOutlook for Q1 2026\nWe anticipate continued momentum heading into the new fiscal year...',
+    'data.xlsx': 'Product Sales Report\n──────────────────\nProduct A    $120,000\nProduct B     $89,500\nProduct C    $234,000\nProduct D     $67,200\nProduct E    $145,800\n──────────────────\nTotal        $656,500\n\nGrowth: +12.4% from last period',
+    'invoice.pdf': 'INVOICE #2025-0142\n─────────────────\nFrom: Acme Corp\nTo: Client Name\nDate: April 4, 2026\n\nDescription          Amount\n─────────────────────────\nWeb Development    $2,400\nDesign Services      $800\nHosting (annual)     $240\n─────────────────────────\nSubtotal           $3,440\nTax (8%)             $275\nTotal              $3,715',
+  };
+  const body = fakeText[filename] || `Document: ${filename}\n${'─'.repeat(40)}\n\nThis document was opened from File Explorer.\n\nFile type: .${ext.toUpperCase()}\nSize: ${(Math.random()*2+0.5).toFixed(1)} MB\nModified: April 4, 2026\n\n[Document content would appear here]`;
+  const content = `<div style="height:100%;display:flex;flex-direction:column;background:#1e1e22;">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(0,0,0,0.2);border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;flex-wrap:wrap;">
+      <div style="cursor:pointer;padding:6px 10px;border-radius:6px;background:rgba(255,255,255,0.08);font-size:12px" onclick="showNotification('Document','Printing...','🖨️')">🖨️ Print</div>
+      <div style="cursor:pointer;padding:6px 10px;border-radius:6px;background:rgba(255,255,255,0.08);font-size:12px" onclick="showNotification('Document','Saved','💾')">💾 Save</div>
+      <div style="cursor:pointer;padding:6px 10px;border-radius:6px;background:rgba(255,255,255,0.08);font-size:12px" onclick="showNotification('Document','Shared','📤')">📤 Share</div>
+      <div style="cursor:pointer;padding:6px 10px;border-radius:6px;background:rgba(255,255,255,0.08);font-size:12px" onclick="showNotification('Document','Zoom In','🔍')">🔍+</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:32px;-webkit-overflow-scrolling:touch;">
+      <div style="max-width:600px;margin:0 auto;background:rgba(255,255,255,0.04);border-radius:8px;padding:32px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-size:22px;margin-bottom:4px">${icon} ${filename}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:16px">Microsoft ${ext.toUpperCase()} Document • April 4, 2026</div>
+        <pre style="font-family:inherit;font-size:14px;line-height:1.8;color:rgba(255,255,255,0.85);white-space:pre-wrap;word-break:break-word">${body.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+      </div>
+    </div>
+  </div>`;
+  createWindow('doc_'+filename, filename, icon, 680, 520, content);
+}
+
+function openUAC(filename) {
+  const winId = 'uac_'+filename;
+  const content = `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:20px;text-align:center;">
+    <div style="font-size:60px">🛡️</div>
+    <div style="font-size:18px;font-weight:600">User Account Control</div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.6);line-height:1.6">Do you want to allow this app to make changes to your device?</div>
+    <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 24px;width:100%;max-width:300px">
+      <div style="font-size:13px;font-weight:600">${filename}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Verified publisher: Unknown</div>
+    </div>
+    <div style="display:flex;gap:12px;width:100%;max-width:300px">
+      <div style="flex:1;padding:12px;background:var(--accent);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;text-align:center" onclick="closeWindow('${winId}');showNotification('UAC','Installation started: ${filename}','🛡️')">Yes</div>
+      <div style="flex:1;padding:12px;background:rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font-size:14px;text-align:center" onclick="closeWindow('${winId}')">No</div>
+    </div>
+  </div>`;
+  createWindow(winId, 'User Account Control', '🛡️', 380, 380, content);
+}
+
+function feSearch() {
+  showNotification('Search', 'Type in the address bar to search.', '🔍');
+}
+
+function openNotepad() {
+  const content = `<div class="notepad-toolbar">
+      <div class="np-menu" onclick="npMenu('File',this)">File</div>
+      <div class="np-menu" onclick="npMenu('Edit',this)">Edit</div>
+      <div class="np-menu" onclick="npMenu('Format',this)">Format</div>
+      <div class="np-menu" onclick="npMenu('View',this)">View</div>
+      <div class="np-menu" onclick="npMenu('Help',this)">Help</div>
+    </div>
+    <div id="np-dropdown" style="display:none;position:absolute;top:33px;left:0;background:rgba(30,30,30,0.98);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px;min-width:160px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.6)"></div>
+    <textarea class="notepad-area" id="np-text" placeholder="Start typing..." spellcheck="false"></textarea>`;
+  createWindow('notepad', 'Notepad', '📝', 600, 440, content);
+}
+
+function npMenu(menu, el) {
+  const dd = document.getElementById('np-dropdown');
+  if (!dd) return;
+  const rect = el.getBoundingClientRect();
+  dd.style.left = (el.offsetLeft) + 'px';
+  const menus = {
+    File: ['New\tnpCmd(\'new\')', 'Open...\tnpCmd(\'open\')', '---', 'Save\tnpCmd(\'save\')', 'Save As...\tnpCmd(\'save\')', '---', 'Exit\tcloseWindow(\'notepad\')'],
+    Edit: ['Undo\tnpCmd(\'undo\')', 'Redo\tnpCmd(\'redo\')', '---', 'Cut\tnpCmd(\'cut\')', 'Copy\tnpCmd(\'copy\')', 'Paste\tnpCmd(\'paste\')', '---', 'Select All\tnpCmd(\'selectall\')'],
+    Format: ['Word Wrap\tnpCmd(\'wrap\')', '---', 'Font...\tnpCmd(\'font\')'],
+    View: ['Zoom In\tnpCmd(\'zoomin\')', 'Zoom Out\tnpCmd(\'zoomout\')', 'Restore Default Zoom\tnpCmd(\'zoomreset\')'],
+    Help: ['View Help\tnpCmd(\'help\')', '---', 'About Notepad\tnpCmd(\'about\')'],
+  };
+  const items = menus[menu] || [];
+  dd.innerHTML = items.map(item => {
+    if (item === '---') return '<div style="height:1px;background:rgba(255,255,255,0.1);margin:4px 0"></div>';
+    const [label, fn] = item.split('\t');
+    return `<div class="ctx-item" style="font-size:13px" onclick="${fn};document.getElementById('np-dropdown').style.display='none'">${label}</div>`;
+  }).join('');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+  event.stopPropagation();
+}
+
+function npCmd(cmd) {
+  const ta = document.getElementById('np-text');
+  if (!ta) return;
+  if (cmd === 'new') { if(confirm('Save changes?')) ta.value=''; else ta.value=''; }
+  else if (cmd === 'copy') { document.execCommand('copy'); }
+  else if (cmd === 'cut')  { document.execCommand('cut'); }
+  else if (cmd === 'paste') { ta.focus(); document.execCommand('paste'); }
+  else if (cmd === 'selectall') { ta.select(); }
+  else if (cmd === 'undo') { document.execCommand('undo'); }
+  else if (cmd === 'redo') { document.execCommand('redo'); }
+  else if (cmd === 'zoomin') { ta.style.fontSize = (parseFloat(getComputedStyle(ta).fontSize)+2)+'px'; }
+  else if (cmd === 'zoomout') { ta.style.fontSize = Math.max(8,parseFloat(getComputedStyle(ta).fontSize)-2)+'px'; }
+  else if (cmd === 'zoomreset') { ta.style.fontSize = '14px'; }
+  else if (cmd === 'save') { 
+    const blob = new Blob([ta.value],{type:'text/plain'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'document.txt'; a.click();
+  }
+  else if (cmd === 'about') { showNotification('Notepad','Windows Notepad — Version 11.0','📝'); }
+  document.getElementById('np-dropdown') && (document.getElementById('np-dropdown').style.display='none');
+}
+
+function openSettings() {
+  const panels = {
+    System: `<div class="settings-title">System</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Dark mode</h4><p>Choose your Windows mode</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Night light</h4><p>Reduce eye strain at night</p></div><div class="toggle off" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Notifications</h4><p>Get notifications from apps</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Focus assist</h4><p>Minimize distractions</p></div><div class="toggle off" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Storage sense</h4><p>Automatically free up space</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Power mode</h4><p style="color:var(--accent-light)">Balanced (recommended)</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>`,
+    Bluetooth: `<div class="settings-title">Bluetooth & Devices</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Bluetooth</h4><p>Discoverable as "DESKTOP-PC"</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Add device</h4><p>Pair a new Bluetooth device</p></div><div style="font-size:18px;color:var(--text-secondary)">+</div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Mouse</h4><p>Logitech MX Master 3</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>`,
+    Network: `<div class="settings-title">Network & Internet</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Wi-Fi</h4><p>Connected — HomeNetwork_5G</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Airplane mode</h4><p>Stop all wireless communication</p></div><div class="toggle off" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>VPN</h4><p>Not connected</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>`,
+    Personalization: `<div class="settings-title">Personalization</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Background</h4><p>Windows Spotlight</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Accent color</h4><p>Blue (#0078D4)</p></div><div style="width:24px;height:24px;border-radius:50%;background:#0078d4;border:2px solid rgba(255,255,255,0.3)"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Themes</h4><p>Windows 11 Dark</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>`,
+    Apps: `<div class="settings-title">Apps</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Installed apps</h4><p>Manage your installed apps</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Default apps</h4><p>Set defaults for file types</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>App execution aliases</h4><p>Manage app name aliases</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>`,
+    Accounts: `<div class="settings-title">Accounts</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>John Doe</h4><p>Local Account · Administrator</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Sign-in options</h4><p>Windows Hello, PIN, Password</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>`,
+    Time: `<div class="settings-title">Time & Language</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Set time automatically</h4><p>Using internet time server</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Time zone</h4><p>(UTC-05:00) Eastern Time</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Language</h4><p>English (United States)</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>`,
+    Gaming: `<div class="settings-title">Gaming</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Xbox Game Bar</h4><p>Open with Win + G</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Game Mode</h4><p>Optimizes PC for gaming</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>`,
+    Accessibility: `<div class="settings-title">Accessibility</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Text size</h4><p>Make text larger</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Narrator</h4><p>Screen reader</p></div><div class="toggle off" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Magnifier</h4><p>Zoom in on part of screen</p></div><div class="toggle off" onclick="this.classList.toggle('off')"></div></div>`,
+    Privacy: `<div class="settings-title">Privacy & Security</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Location</h4><p>Apps can access your location</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Camera</h4><p>Apps can use the camera</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Microphone</h4><p>Apps can use the microphone</p></div><div class="toggle" onclick="this.classList.toggle('off')"></div></div>`,
+    Update: `<div class="settings-title">Windows Update</div>
+      <div class="settings-card"><div class="settings-card-info"><h4>You're up to date</h4><p>Last checked: Today, 4:00 AM</p></div><div style="font-size:18px">✅</div></div>
+      <div class="settings-card"><div class="settings-card-info"><h4>Check for updates</h4><p>Find the latest updates</p></div><div style="font-size:18px;color:var(--text-secondary)">›</div></div>`,
+  };
+
+  const navItems = [
+    {key:'System',icon:'🖥️',label:'System'},
+    {key:'Bluetooth',icon:'🔵',label:'Bluetooth & Devices'},
+    {key:'Network',icon:'📶',label:'Network & Internet'},
+    {key:'Personalization',icon:'🎨',label:'Personalization'},
+    {key:'Apps',icon:'📱',label:'Apps'},
+    {key:'Accounts',icon:'👤',label:'Accounts'},
+    {key:'Time',icon:'⏰',label:'Time & Language'},
+    {key:'Gaming',icon:'🎮',label:'Gaming'},
+    {key:'Accessibility',icon:'♿',label:'Accessibility'},
+    {key:'Privacy',icon:'🔒',label:'Privacy & Security'},
+    {key:'Update',icon:'🔄',label:'Windows Update'},
+  ];
+
+  const navHTML = navItems.map(n =>
+    `<div class="settings-nav-item${n.key==='System'?' active':''}" data-key="${n.key}" onclick="settingsNav('${n.key}',this)"><span class="icon">${n.icon}</span> ${n.label}</div>`
+  ).join('');
+
+  const contentHTML = `<div class="settings-body">
+    <div class="settings-nav" id="settings-nav">${navHTML}</div>
+    <div class="settings-content" id="settings-panel">${panels['System']}</div>
+  </div>`;
+
+  window._settingsPanels = panels;
+  createWindow('settings', 'Settings', '⚙️', 820, 560, contentHTML);
+  // Use event delegation - more reliable on mobile
+  requestAnimationFrame(() => {
+    const nav = document.getElementById('settings-nav');
+    if (nav) {
+      nav.addEventListener('click', function(e) {
+        const item = e.target.closest('.settings-nav-item');
+        if (item && item.dataset.key) settingsNav(item.dataset.key, item);
+      });
+    }
+  });
+}
+
+function settingsNav(key, el) {
+  document.querySelectorAll('.settings-nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  const panel = document.getElementById('settings-panel');
+  if (panel && window._settingsPanels) panel.innerHTML = window._settingsPanels[key] || '';
+}
+
+
+function openCalc() {
+  let calcExpr = '', calcCurrent = '0';
+
+  const content = `
+    <div class="calc-body">
+      <div class="calc-display">
+        <div class="calc-expression" id="calc-expr"></div>
+        <div class="calc-number" id="calc-num">0</div>
+      </div>
+      <div class="calc-grid">
+        <button class="calc-btn light" onclick="calcInput('MC')">MC</button>
+        <button class="calc-btn light" onclick="calcInput('MR')">MR</button>
+        <button class="calc-btn light" onclick="calcInput('M+')">M+</button>
+        <button class="calc-btn light" onclick="calcInput('M-')">M-</button>
+
+        <button class="calc-btn light" onclick="calcInput('%')">%</button>
+        <button class="calc-btn light" onclick="calcInput('CE')">CE</button>
+        <button class="calc-btn light" onclick="calcInput('C')">C</button>
+        <button class="calc-btn light" onclick="calcInput('⌫')">⌫</button>
+
+        <button class="calc-btn light" onclick="calcInput('1/x')">¹/ₓ</button>
+        <button class="calc-btn light" onclick="calcInput('x2')">x²</button>
+        <button class="calc-btn light" onclick="calcInput('sqrt')">√x</button>
+        <button class="calc-btn accent" onclick="calcInput('/')">÷</button>
+
+        <button class="calc-btn" onclick="calcInput('7')">7</button>
+        <button class="calc-btn" onclick="calcInput('8')">8</button>
+        <button class="calc-btn" onclick="calcInput('9')">9</button>
+        <button class="calc-btn accent" onclick="calcInput('*')">×</button>
+
+        <button class="calc-btn" onclick="calcInput('4')">4</button>
+        <button class="calc-btn" onclick="calcInput('5')">5</button>
+        <button class="calc-btn" onclick="calcInput('6')">6</button>
+        <button class="calc-btn accent" onclick="calcInput('-')">−</button>
+
+        <button class="calc-btn" onclick="calcInput('1')">1</button>
+        <button class="calc-btn" onclick="calcInput('2')">2</button>
+        <button class="calc-btn" onclick="calcInput('3')">3</button>
+        <button class="calc-btn accent" onclick="calcInput('+')">+</button>
+
+        <button class="calc-btn light" onclick="calcInput('+/-')">+/−</button>
+        <button class="calc-btn" onclick="calcInput('0')">0</button>
+        <button class="calc-btn" onclick="calcInput('.')">.</button>
+        <button class="calc-btn equals" onclick="calcInput('=')">=</button>
+      </div>
+    </div>
+  `;
+  createWindow('calc', 'Calculator', '🧮', 320, 500, content);
+}
+
+// Calculator logic
+let calcMemory = 0, calcPrev = '', calcOp = '', calcReset = false;
+function calcInput(val) {
+  const numEl = document.getElementById('calc-num');
+  const exprEl = document.getElementById('calc-expr');
+  if (!numEl) return;
+  let cur = numEl.textContent;
+
+  if (val === 'C') { numEl.textContent = '0'; exprEl.textContent = ''; calcOp = ''; calcPrev = ''; return; }
+  if (val === 'CE') { numEl.textContent = '0'; return; }
+  if (val === '⌫') { numEl.textContent = cur.length > 1 ? cur.slice(0,-1) : '0'; return; }
+  if (val === '+/-') { numEl.textContent = cur.startsWith('-') ? cur.slice(1) : '-'+cur; return; }
+  if (val === '%') { numEl.textContent = parseFloat(cur)/100; return; }
+  if (val === '1/x') { numEl.textContent = 1/parseFloat(cur); return; }
+  if (val === 'x2') { numEl.textContent = Math.pow(parseFloat(cur),2); return; }
+  if (val === 'sqrt') { numEl.textContent = Math.sqrt(parseFloat(cur)); return; }
+  if (val === 'MC') { calcMemory = 0; return; }
+  if (val === 'MR') { numEl.textContent = calcMemory; return; }
+  if (val === 'M+') { calcMemory += parseFloat(cur); return; }
+  if (val === 'M-') { calcMemory -= parseFloat(cur); return; }
+
+  if (['+','-','*','/'].includes(val)) {
+    calcPrev = cur; calcOp = val; calcReset = true;
+    exprEl.textContent = cur + ' ' + val;
+    return;
+  }
+  if (val === '=') {
+    if (!calcOp || !calcPrev) return;
+    const a = parseFloat(calcPrev), b = parseFloat(cur);
+    let res;
+    if (calcOp==='+') res = a+b;
+    else if (calcOp==='-') res = a-b;
+    else if (calcOp==='*') res = a*b;
+    else if (calcOp==='/') res = b===0?'Cannot divide by zero':a/b;
+    exprEl.textContent = calcPrev + ' ' + calcOp + ' ' + cur + ' =';
+    numEl.textContent = res;
+    calcOp = ''; calcPrev = ''; calcReset = true;
+    return;
+  }
+  if (val === '.') {
+    if (calcReset) { numEl.textContent = '0.'; calcReset = false; return; }
+    if (!cur.includes('.')) numEl.textContent = cur + '.';
+    return;
+  }
+  if (calcReset) { numEl.textContent = val; calcReset = false; }
+  else numEl.textContent = cur === '0' ? val : cur + val;
+}
+
+function openBrowser() {
+  const content = `
+    <div class="fe-toolbar" style="gap:8px;">
+      <div class="fe-nav-btn">←</div>
+      <div class="fe-nav-btn">→</div>
+      <div class="fe-nav-btn">↻</div>
+      <div class="fe-nav-btn">🏠</div>
+      <input class="fe-address" value="https://www.bing.com" style="flex:1;">
+      <div class="fe-nav-btn">⭐</div>
+      <div class="fe-nav-btn">⋯</div>
+    </div>
+    <div style="background:#1a1a1e;height:calc(100% - 49px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+      <div style="font-size:52px;">🌐</div>
+      <div style="font-size:28px;font-weight:300;color:rgba(255,255,255,0.8);">Microsoft Edge</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;padding:0 20px;">
+        ${['🔵 Outlook','📸 Bing Images','📰 MSN News','🎮 Xbox','📦 Microsoft Store','🏢 Microsoft 365'].map(s=>`<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 20px;cursor:pointer;font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">${s}</div>`).join('')}
+      </div>
+      <input placeholder="Search or enter web address" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:24px;padding:12px 24px;color:#fff;font-size:14px;width:420px;outline:none;text-align:center;font-family:inherit;" onfocus="this.style.borderColor='#0078d4'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'">
+    </div>
+  `;
+  createWindow('browser', 'Microsoft Edge', '🌐', 900, 580, content);
+}
+
+// ============ MINIMIZE ALL ============
+function minimizeAll() {
+  Object.keys(openWindows).forEach(id => {
+    if (openWindows[id] && !openWindows[id].minimized) {
+      minimizeWindow(id);
+    }
+  });
+}
+
+// ============ POWER MENU ============
+function showPowerMenu() {
+  closeStart();
+  showNotification('Windows', 'Sign out, Sleep, Shut down, or Restart options would appear here.');
+}
+
+// ============ NOTIFICATIONS ============
+function showNotification(title, body, icon='🪟') {
+  const container = document.getElementById('notifications');
+  const notif = document.createElement('div');
+  notif.className = 'notif';
+  notif.innerHTML = `
+    <div class="notif-header">
+      <span class="notif-icon">${icon}</span>
+      <span class="notif-app">Windows</span>
+      <span class="notif-close" onclick="this.closest('.notif').remove()">×</span>
+    </div>
+    <div class="notif-title">${title}</div>
+    <div class="notif-body">${body}</div>
+  `;
+  container.appendChild(notif);
+  setTimeout(() => { notif.style.transition = 'opacity 0.4s, transform 0.4s'; notif.style.opacity = '0'; notif.style.transform = 'translateX(120%)'; setTimeout(() => notif.remove(), 400); }, 4000);
+}
+
+// Welcome notification
+setTimeout(() => showNotification('Welcome to Windows 11', 'Your desktop is ready. Double-click icons to open apps.', '🪟'), 1000);
+
+// ============ KEYBOARD SHORTCUTS ============
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.key === 'Meta') return;
+  if (e.ctrlKey && e.key === 'Escape') toggleStart();
+  if (e.key === 'Escape') {
+    closeStart();
+    document.getElementById('action-center').classList.remove('visible');
+    actionCenterVisible = false;
+    hideContextMenu();
+  }
+});
+
+// Prevent context menu on taskbar
+document.getElementById('taskbar').addEventListener('contextmenu', e => e.preventDefault());
+</script>
+</body>
+</html>

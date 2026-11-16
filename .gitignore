@@ -1,0 +1,6 @@
+node_modules/
+.bak/
+*.apk
+android/app/build/
+android/.gradle/
+android/build/

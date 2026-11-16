@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuroraOS Dashboard</title>
+    <style>
+        :root { --accent: #0078d4; --glass: rgba(25, 25, 25, 0.9); }
+        body { margin: 0; background: #1e1e1e; color: white; font-family: sans-serif; height: 100vh; overflow: hidden; }
+        #taskbar { position: fixed; bottom: 0; width: 100%; height: 48px; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .win { position: absolute; background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; min-width: 300px; min-height: 200px; }
+        .bar { padding: 8px; cursor: move; background: rgba(255,255,255,0.05); display: flex; justify-content: space-between; }
+        textarea { width: 100%; height: 150px; background: transparent; color: white; border: none; outline: none; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div id="desktop"></div>
+    <div id="taskbar"><button onclick="openApp('notepad')">📝 Notepad</button></div>
+    <script>
+        const VirtualDrive = {
+            save: (k, v) => localStorage.setItem('aurora_'+k, v),
+            load: (k) => localStorage.getItem('aurora_'+k)
+        };
+        const openWindows = {};
+        function openApp(id) {
+            if(openWindows[id]) return;
+            const win = document.createElement('div');
+            win.className = 'win';
+            win.innerHTML = '<div class="bar"><span>'+id+'</span><button onclick="this.parentElement.parentElement.remove(); delete openWindows.'+id+'">X</button></div>' + 
+                            '<textarea oninput="VirtualDrive.save(\'note\', this.value)">' + (VirtualDrive.load('note') || '') + '</textarea>';
+            document.getElementById('desktop').appendChild(win);
+            openWindows[id] = true;
+        }
+    </script>
+</body>
+</html>

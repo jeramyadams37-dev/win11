@@ -1,0 +1,6 @@
+{
+  "appId": "com.jeramy.win11",
+  "appName": "AuroraOS Win11",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

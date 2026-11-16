@@ -1,0 +1,9 @@
+Patch Notes - Double Click Desktop Icons
+Timestamp: 20260404_164849
+Target File: mobiwin11.html
+Backup Created: mobiwin11_backup_20260404_164849.html
+
+Changes Applied:
+- Replaced hardcoded onclick="openApp()" attributes with handleIconClick() for double-tap/click support.
+- Replaced selectIcon() logic.
+- Added 500ms threshold logic for touch and mouse interactions to trigger execution.

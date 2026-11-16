@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuroraOS Dashboard</title>
+    <style>
+        :root {
+            --accent: #0078d4;
+            --glass-bg: rgba(28, 28, 28, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-sec: rgba(255, 255, 255, 0.6);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            margin: 0; padding: 0; height: 100vh; overflow: hidden;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(45deg, #1e3a8a, #581c87);
+            background-size: cover; color: var(--text-main);
+        }
+        
+        /* Taskbar */
+        #taskbar {
+            position: fixed; bottom: 0; left: 0; right: 0; height: 48px;
+            background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(20px);
+            display: flex; align-items: center; justify-content: center; z-index: 9999;
+            border-top: 1px solid var(--glass-border);
+        }
+        .tb-icon { 
+            width: 36px; height: 36px; margin: 0 4px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; transition: 0.2s; font-size: 20px;
+        }
+        .tb-icon:hover { background: rgba(255,255,255,0.1); }
+        .tb-icon.active::after {
+            content: ''; position: absolute; bottom: 2px; width: 12px; height: 3px;
+            background: var(--accent); border-radius: 2px;
+        }
+
+        /* Window System */
+        .window {
+            position: absolute; background: var(--glass-bg); 
+            backdrop-filter: blur(40px); border: 1px solid var(--glass-border);
+            border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; overflow: hidden;
+            min-width: 200px; min-height: 150px;
+        }
+        .titlebar {
+            padding: 10px 15px; background: rgba(255,255,255,0.03);
+            display: flex; align-items: center; cursor: move; user-select: none;
+        }
+        .title-text { flex: 1; font-size: 13px; font-weight: 500; }
+        .win-controls { display: flex; gap: 10px; }
+        .win-btn { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .close-btn { background: #ff5f56; }
+        .content { flex: 1; padding: 15px; overflow-y: auto; }
+        
+        /* Notepad Specific */
+        #np-editor {
+            width: 100%; height: 100%; background: transparent; border: none;
+            color: white; font-family: monospace; font-size: 14px; outline: none; resize: none;
+        }
+
+        /* Start Menu */
+        #start-menu {
+            position: fixed; bottom: 58px; left: 50%; transform: translateX(-50%) translateY(20px);
+            width: 400px; height: 450px; background: var(--glass-bg);
+            backdrop-filter: blur(50px); border-radius: 12px; border: 1px solid var(--glass-border);
+            z-index: 9000; display: none; padding: 20px; opacity: 0;
+            transition: 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+        #start-menu.visible { display: block; transform: translateX(-50%) translateY(0); opacity: 1; }
+        .app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .app-item { text-align: center; cursor: pointer; padding: 10px; border-radius: 8px; }
+        .app-item:hover { background: rgba(255,255,255,0.1); }
+        .app-item div { font-size: 24px; margin-bottom: 5px; }
+        .app-item span { font-size: 12px; color: var(--text-sec); }
+    </style>
+</head>
+<body>
+
+<div id="desktop"></div>
+
+<div id="start-menu">
+    <div style="margin-bottom: 20px; font-weight: 600;">Pinned Apps</div>
+    <div class="app-grid" id="start-apps"></div>
+</div>
+
+<div id="taskbar">
+    <div class="tb-icon" onclick="toggleStart()">💠</div>
+    <div id="active-apps" style="display:flex;"></div>
+</div>
+
+<script>
+// --- Persistence Engine ---
+const VirtualDrive = {
+    save: (key, data) => localStorage.setItem(`aurora_v8_${key}`, JSON.stringify(data)),
+    load: (key) => {
+        const d = localStorage.getItem(`aurora_v8_${key}`);
+        try { return JSON.parse(d); } catch { return d; }
+    }
+};
+
+// --- App Registry ---
+const APP_REGISTRY = {
+    notepad: {
+        title: "Notepad", icon: "📝",
+        render: () => {
+            const saved = VirtualDrive.load('notepad_buffer') || '';
+            return `<textarea id="np-editor" oninput="VirtualDrive.save('notepad_buffer', this.value)">${saved}</textarea>`;
+        }
+    },
+    explorer: {
+        title: "File Explorer", icon: "🗂️",
+        render: () => `<div style="color:gray">Storage: 2.4GB Used / 128GB Total</div><hr><div>📄 notes.txt</div>`
+    },
+    settings: {
+        title: "Settings", icon: "⚙️",
+        render: () => `<div>System: AuroraOS v8.1</div><div>User: Jerany</div>`
+    }
+};
+
+let openWindows = {};
+let zIndex = 100;
+
+function toggleStart() {
+    const m = document.getElementById('start-menu');
+    m.classList.toggle('visible');
+}
+
+function openApp(id) {
+    document.getElementById('start-menu').classList.remove('visible');
+    if (openWindows[id]) return focusWin(id);
+
+    const app = APP_REGISTRY[id];
+    const win = document.createElement('div');
+    win.className = 'window';
+    win.id = `win-${id}`;
+    win.style.left = '50px'; win.style.top = '50px';
+    win.style.width = '400px'; win.style.height = '300px';
+    win.style.zIndex = ++zIndex;
+
+    win.innerHTML = \`
+        <div class="titlebar" onmousedown="dragStart(event, '\${id}')">
+            <span style="margin-right:8px">\${app.icon}</span>
+            <span class="title-text">\${app.title}</span>
+            <div class="win-controls">
+                <div class="win-btn close-btn" onclick="closeApp('\${id}')"></div>
+            </div>
+        </div>
+        <div class="content">\${app.render()}</div>
+    \`;
+
+    document.getElementById('desktop').appendChild(win);
+    openWindows[id] = true;
+    updateTaskbar();
+}
+
+function closeApp(id) {
+    document.getElementById(\`win-\${id}\`).remove();
+    delete openWindows[id];
+    updateTaskbar();
+}
+
+function focusWin(id) {
+    document.getElementById(\`win-\${id}\`).style.zIndex = ++zIndex;
+}
+
+function updateTaskbar() {
+    const container = document.getElementById('active-apps');
+    container.innerHTML = '';
+    Object.keys(openWindows).forEach(id => {
+        const app = APP_REGISTRY[id];
+        container.innerHTML += \`<div class="tb-icon active" onclick="focusWin('\${id}')">\${app.icon}</div>\`;
+    });
+}
+
+// Simple Drag
+function dragStart(e, id) {
+    const win = document.getElementById(\`win-\${id}\`);
+    focusWin(id);
+    let ox = e.clientX - win.offsetLeft;
+    let oy = e.clientY - win.offsetTop;
+    
+    document.onmousemove = (ev) => {
+        win.style.left = (ev.clientX - ox) + 'px';
+        win.style.top = (ev.clientY - oy) + 'px';
+    };
+    document.onmouseup = () => document.onmousemove = null;
+}
+
+// Init Start Menu
+const startGrid = document.getElementById('start-apps');
+Object.keys(APP_REGISTRY).forEach(id => {
+    const app = APP_REGISTRY[id];
+    startGrid.innerHTML += \`
+        <div class="app-item" onclick="openApp('\${id}')">
+            <div>\${app.icon}</div>
+            <span>\${app.title}</span>
+        </div>\`;
+});
+</script>
+</body>
+</html>
