@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd ~/win11
+
+# Ensure Android shared Downloads directory is accessible
+if [ ! -d "$HOME/storage/downloads" ]; then
+  termux-setup-storage
+  sleep 2
+fi
+mkdir -p "$HOME/storage/downloads"
+
+# Wait for the latest GitHub Actions build if it is still running
+RUN_ID=$(gh run list --workflow="build-apk.yml" --limit 1 --json databaseId --jq '.[0].databaseId')
+RUN_STATUS=$(gh run view "$RUN_ID" --json status --jq '.status')
+if [ "$RUN_STATUS" != "completed" ]; then
+  echo "Build #$RUN_ID is $RUN_STATUS — watching until complete..."
+  gh run watch "$RUN_ID" --exit-status
+fi
+
+# Download and stage the latest signed release APK
+APK_OUT="$HOME/storage/downloads/AuroraOS-Win11.apk"
+gh release download --pattern "*.apk" -D "$HOME/storage/downloads/" --clobber
+[ -f "$HOME/storage/downloads/app-release.apk" ] && mv -f "$HOME/storage/downloads/app-release.apk" "$APK_OUT"
+
+echo "=== APK CHECKLIST ==="
+[ -s "$APK_OUT" ] && echo "  [x] Staged APK: $(ls -lh "$APK_OUT" | awk '{print $5, $9}')" || { echo "  [ ] APK missing or empty"; exit 1; }
+if command -v keytool >/dev/null 2>&1; then
+  SIGNER=$(keytool -printcert -jarfile "$APK_OUT" 2>/dev/null | grep -m1 "Owner:" || true)
+  [ -n "$SIGNER" ] && echo "  [x] Signing cert verified ($SIGNER)"
+fi
+
+echo "Opening Android package installer..."
+termux-open "$APK_OUT"

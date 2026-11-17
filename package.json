@@ -11,8 +11,6 @@
   "dependencies": {
     "@capacitor/android": "^8.6.2",
     "@capacitor/cli": "^8.6.2",
-    "@capacitor/core": "^8.6.2",
-    "jszip": "^3.10.2",
-    "xlsx": "^0.18.5"
+    "@capacitor/core": "^8.6.2"
   }
 }

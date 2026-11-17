@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd ~/win11
+
+# Ensure Android shared Downloads directory & GitHub CLI are ready
+if [ ! -d "$HOME/storage/downloads" ]; then
+  termux-setup-storage
+  sleep 2
+fi
+mkdir -p "$HOME/storage/downloads"
+command -v gh >/dev/null 2>&1 || pkg install -y gh
+
+# Commit & push any pending local Win11 edits so GitHub builds the newest code
+TARGET_SHA=""
+if [ -d ".git" ]; then
+  if [ -n "$(git status --porcelain www android 2>/dev/null || true)" ]; then
+    git add www android
+    git commit -m "chore: sync Win11 apps and OS functions" || true
+  fi
+  git push 2>/dev/null || true
+  TARGET_SHA=$(git rev-parse HEAD)
+fi
+
+# Poll up to 30s for GitHub Actions to register the workflow run for TARGET_SHA
+RUN_ID=""
+if [ -n "$TARGET_SHA" ]; then
+  echo "Locating build-apk.yml run for commit ${TARGET_SHA:0:7}..."
+  for _ in $(seq 1 10); do
+    RUN_ID=$(gh run list --workflow="build-apk.yml" --commit "$TARGET_SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+    [ -n "$RUN_ID" ] && break
+    sleep 3
+  done
+fi
+
+# Fallback to latest workflow run if commit filter returned empty
+if [ -z "$RUN_ID" ]; then
+  RUN_ID=$(gh run list --workflow="build-apk.yml" --limit 1 --json databaseId --jq '.[0].databaseId')
+fi
+
+RUN_STATUS=$(gh run view "$RUN_ID" --json status --jq '.status')
+if [ "$RUN_STATUS" != "completed" ]; then
+  echo "Watching GitHub Actions build #$RUN_ID ($RUN_STATUS)..."
+  gh run watch "$RUN_ID" --exit-status
+else
+  CONCLUSION=$(gh run view "$RUN_ID" --json conclusion --jq '.conclusion')
+  echo "Build #$RUN_ID already completed ($CONCLUSION)."
+  [ "$CONCLUSION" = "success" ] || { echo "Build #$RUN_ID did not succeed ($CONCLUSION)."; exit 1; }
+fi
+
+# Download APK into isolated staging directory (Release first, Workflow Artifact fallback)
+TMP_DL=$(mktemp -d)
+trap 'rm -rf "$TMP_DL"' EXIT
+
+if ! gh release download --pattern "*.apk" -D "$TMP_DL" --clobber 2>/dev/null; then
+  echo "No release APK asset found — downloading from workflow run #$RUN_ID artifacts..."
+  gh run download "$RUN_ID" -D "$TMP_DL"
+fi
+
+FOUND_APK=$(find "$TMP_DL" -type f -name "*.apk" | head -n 1)
+[ -n "$FOUND_APK" ] && [ -s "$FOUND_APK" ] || { echo "ERROR: No .apk file found in downloaded assets."; exit 1; }
+
+APK_OUT="$HOME/storage/downloads/AuroraOS-Win11.apk"
+cp -f "$FOUND_APK" "$APK_OUT"
+
+echo ""
+echo "=== APK VISUAL VERIFICATION CHECKLIST ==="
+echo "  [x] Workflow Run: #$RUN_ID (success)"
+echo "  [x] Staged File:  $(ls -lh "$APK_OUT" | awk '{print $5, $9}')"
+echo "  [x] SHA-256:      $(sha256sum "$APK_OUT" | awk '{print substr($1,1,16)"..."}')"
+if command -v keytool >/dev/null 2>&1; then
+  SIGNER=$(keytool -printcert -jarfile "$APK_OUT" 2>/dev/null | grep -m1 "Owner:" || true)
+  [ -n "$SIGNER" ] && echo "  [x] Certificate:  $SIGNER"
+fi
+
+echo ""
+echo "Launching Android package installer..."
+termux-open "$APK_OUT"
