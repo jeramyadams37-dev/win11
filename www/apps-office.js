@@ -4,7 +4,9 @@
   const KEYS = {
     WORD_DOCS: 'w11_office_word_docs_v1',
     EXCEL_SHEETS: 'w11_office_excel_v1',
-    PPT_DECKS: 'w11_office_ppt_v1'
+    PPT_DECKS: 'w11_office_ppt_v1',
+    PAINT_DATA: 'w11_office_paint_v1',
+    CODE_TABS: 'w11_code_studio_v1'
   };
 
   function readStore(key, fallback) {
@@ -54,15 +56,16 @@
     }, 250);
   }
 
-  // Real OOXML .docx Reader (uses JSZip + DOMParser)
+  // =========================================================================
+  // REAL OOXML .DOCX IMPORT & EXPORT (JSZip + DOMParser)
+  // =========================================================================
   async function importDocxArrayBuffer(arrayBuffer) {
     if (!window.JSZip) throw new Error('JSZip offline bundle not loaded');
     const zip = await window.JSZip.loadAsync(arrayBuffer);
     const docEntry = zip.file('word/document.xml');
     if (!docEntry) throw new Error('Invalid .docx archive (missing word/document.xml)');
     const xmlText = await docEntry.async('text');
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(xmlText, 'application/xml');
+    const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
 
     const byTag = (root, name) => Array.from(root.getElementsByTagNameNS('*', name));
     const paragraphs = byTag(xml, 'p');
@@ -94,7 +97,6 @@
     return blocks.join('\n') || '<p></p>';
   }
 
-  // Real OOXML .docx Generator (uses JSZip)
   async function exportDocxBlob(htmlContent) {
     if (!window.JSZip) throw new Error('JSZip offline bundle not loaded');
     const holder = document.createElement('div');
@@ -185,7 +187,234 @@
     });
   }
 
-  // Seed default Office files on first launch
+  // =========================================================================
+  // REAL OOXML .PPTX IMPORT & EXPORT (JSZip + DOMParser)
+  // =========================================================================
+  async function importPptxArrayBuffer(arrayBuffer) {
+    if (!window.JSZip) throw new Error('JSZip offline bundle not loaded');
+    const zip = await window.JSZip.loadAsync(arrayBuffer);
+    const slidePaths = Object.keys(zip.files)
+      .filter((p) => /^ppt\/slides\/slide\d+\.xml$/i.test(p))
+      .sort((a, b) => {
+        const na = parseInt(a.match(/(\d+)\.xml$/i)[1], 10);
+        const nb = parseInt(b.match(/(\d+)\.xml$/i)[1], 10);
+        return na - nb;
+      });
+
+    if (!slidePaths.length) throw new Error('Invalid .pptx file (no slides found)');
+    const byTag = (root, name) => Array.from(root.getElementsByTagNameNS('*', name));
+    const slides = [];
+
+    for (let i = 0; i < slidePaths.length; i++) {
+      const xmlStr = await zip.file(slidePaths[i]).async('text');
+      const xml = new DOMParser().parseFromString(xmlStr, 'application/xml');
+      const shapes = byTag(xml, 'sp');
+
+      let title = '';
+      let subtitle = '';
+      const bodyLines = [];
+      const fallbackTexts = [];
+
+      for (const sp of shapes) {
+        const paras = byTag(sp, 'p')
+          .map((p) => byTag(p, 't').map((t) => t.textContent || '').join('').trim())
+          .filter(Boolean);
+        if (!paras.length) continue;
+
+        const ph = byTag(sp, 'ph')[0];
+        const phType = (ph?.getAttribute('type') || '').toLowerCase();
+        if (phType === 'title' || phType === 'ctrtitle') {
+          title = paras.join(' ');
+        } else if (phType === 'subtitle') {
+          subtitle = paras.join(' ');
+        } else if (phType === 'body' || phType === 'obj') {
+          bodyLines.push(...paras);
+        } else {
+          fallbackTexts.push(paras);
+        }
+      }
+
+      if (!title && fallbackTexts.length) {
+        title = fallbackTexts.shift().join(' ');
+      }
+      if (!subtitle && fallbackTexts.length > 1) {
+        subtitle = fallbackTexts.shift().join(' ');
+      }
+      for (const rem of fallbackTexts) {
+        bodyLines.push(...rem);
+      }
+
+      slides.push({
+        title: title || `Slide ${i + 1}`,
+        subtitle,
+        body: bodyLines.join('\n'),
+        notes: ''
+      });
+    }
+
+    return slides;
+  }
+
+  async function exportPptxBlob(deck) {
+    if (!window.JSZip) throw new Error('JSZip offline bundle not loaded');
+    const slides = deck.slides && deck.slides.length ? deck.slides : [{ title: 'Slide 1', subtitle: '', body: '' }];
+    const themeColors = {
+      aurora: { bg: '071E3D', fg: 'F8FAFC', sub: '7DD3FC' },
+      fluent: { bg: '173B8F', fg: 'F8FAFC', sub: 'BFDBFE' },
+      crimson: { bg: '5C1616', fg: 'F8FAFC', sub: 'FECACA' },
+      light: { bg: 'F8FAFC', fg: '0F172A', sub: '334155' }
+    };
+    const pal = themeColors[deck.theme] || themeColors.aurora;
+    const zip = new window.JSZip();
+
+    const slideOverrides = slides
+      .map((_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`)
+      .join('\n  ');
+
+    zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+  ${slideOverrides}
+</Types>`);
+
+    zip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+</Relationships>`);
+
+    const sldIdList = slides
+      .map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 2}"/>`)
+      .join('\n    ');
+
+    zip.folder('ppt').file('presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
+  <p:sldIdLst>
+    ${sldIdList}
+  </p:sldIdLst>
+  <p:sldSz cx="12192000" cy="6858000"/>
+  <p:notesSz cx="6858000" cy="9144000"/>
+</p:presentation>`);
+
+    const presRels = slides
+      .map((_, i) => `<Relationship Id="rId${i + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 1}.xml"/>`)
+      .join('\n  ');
+
+    zip.folder('ppt').folder('_rels').file('presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+  ${presRels}
+</Relationships>`);
+
+    zip.folder('ppt').folder('slideMasters').file('slideMaster1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
+</p:sldMaster>`);
+
+    zip.folder('ppt').folder('slideMasters').folder('_rels').file('slideMaster1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+</Relationships>`);
+
+    zip.folder('ppt').folder('slideLayouts').file('slideLayout1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank">
+  <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
+</p:sldLayout>`);
+
+    zip.folder('ppt').folder('slideLayouts').folder('_rels').file('slideLayout1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>`);
+
+    zip.folder('ppt').folder('theme').file('theme1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="AuroraTheme">
+  <a:themeElements>
+    <a:clrScheme name="Aurora">
+      <a:dk1><a:srgbClr val="0F172A"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>
+      <a:dk2><a:srgbClr val="1E293B"/></a:dk2><a:lt2><a:srgbClr val="F1F5F9"/></a:lt2>
+      <a:accent1><a:srgbClr val="2563EB"/></a:accent1><a:accent2><a:srgbClr val="10B981"/></a:accent2>
+      <a:accent3><a:srgbClr val="F59E0B"/></a:accent3><a:accent4><a:srgbClr val="8B5CF6"/></a:accent4>
+      <a:accent5><a:srgbClr val="EC4899"/></a:accent5><a:accent6><a:srgbClr val="06B6D4"/></a:accent6>
+      <a:hlink><a:srgbClr val="38BDF8"/></a:hlink><a:folHlink><a:srgbClr val="818CF8"/></a:folHlink>
+    </a:clrScheme>
+    <a:fontScheme name="Fluent">
+      <a:majorFont><a:latin typeface="Segoe UI"/></a:majorFont>
+      <a:minorFont><a:latin typeface="Segoe UI"/></a:minorFont>
+    </a:fontScheme>
+    <a:fmtScheme name="FluentFmt">
+      <a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>
+      <a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>
+      <a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
+      <a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst>
+    </a:fmtScheme>
+  </a:themeElements>
+</a:theme>`);
+
+    const slidesDir = zip.folder('ppt').folder('slides');
+    const slideRelsDir = slidesDir.folder('_rels');
+
+    slides.forEach((sl, idx) => {
+      const n = idx + 1;
+      const bodyParas = (sl.body || '')
+        .split(/\r?\n/)
+        .map((line) => `<a:p><a:r><a:rPr lang="en-US" sz="2000"><a:solidFill><a:srgbClr val="${pal.fg}"/></a:solidFill></a:rPr><a:t>${escXml(line)}</a:t></a:r></a:p>`)
+        .join('\n          ');
+
+      slidesDir.file(`slide${n}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:bg><p:bgPr><a:solidFill><a:srgbClr val="${pal.bg}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr/>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="685800" y="457200"/><a:ext cx="10820400" cy="1143000"/></a:xfrm></p:spPr>
+        <p:txBody><a:bodyPr/><a:lstStyle/>
+          <a:p><a:r><a:rPr lang="en-US" sz="3600" b="1"><a:solidFill><a:srgbClr val="${pal.fg}"/></a:solidFill></a:rPr><a:t>${escXml(sl.title || '')}</a:t></a:r></a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Subtitle"/><p:cNvSpPr/><p:nvPr><p:ph type="subTitle"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="685800" y="1645920"/><a:ext cx="10820400" cy="685800"/></a:xfrm></p:spPr>
+        <p:txBody><a:bodyPr/><a:lstStyle/>
+          <a:p><a:r><a:rPr lang="en-US" sz="2000"><a:solidFill><a:srgbClr val="${pal.sub}"/></a:solidFill></a:rPr><a:t>${escXml(sl.subtitle || '')}</a:t></a:r></a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="4" name="Content"/><p:cNvSpPr/><p:nvPr><p:ph type="body"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="685800" y="2514600"/><a:ext cx="10820400" cy="3657600"/></a:xfrm></p:spPr>
+        <p:txBody><a:bodyPr/><a:lstStyle/>
+          ${bodyParas || '<a:p><a:endParaRPr lang="en-US"/></a:p>'}
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sld>`);
+
+      slideRelsDir.file(`slide${n}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+</Relationships>`);
+    });
+
+    return await zip.generateAsync({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    });
+  }
+
+  // =========================================================================
+  // SEED DEFAULT FILES ON FIRST RUN
+  // =========================================================================
   if (!localStorage.getItem(KEYS.WORD_DOCS)) {
     writeStore(KEYS.WORD_DOCS, [
       {
@@ -220,20 +449,48 @@
         {
           title: 'AuroraOS Win11',
           subtitle: 'Mobile Edge Desktop Environment • Built by Jeramy Adams',
-          body: '• Full Windows 11 Start Menu, Taskbar & Multi-Window UI\n• Native .docx & .xlsx import/export offline\n• Custom wallpaper engine & persistent local storage',
+          body: '• Full Windows 11 Start Menu, Taskbar & Snap Layouts\n• Native .docx, .xlsx & .pptx import/export offline\n• Built-in Microsoft Paint & Code Studio IDE',
           notes: 'Opening title slide.'
         },
         {
-          title: 'Built-In Productivity',
-          subtitle: 'Word • Excel • PowerPoint • Terminal',
-          body: '• Import & export real .docx and .xlsx workbooks\n• Run live formulas (=SUM, =AVERAGE, =MIN, =MAX)\n• Present full-screen slideshows anywhere',
+          title: 'Built-In Productivity & Dev Tools',
+          subtitle: 'Word • Excel • PowerPoint • Paint • Code Studio',
+          body: '• Import & export real .docx, .xlsx, and .pptx files\n• Sketch diagrams in Paint or preview HTML/JS in Code Studio\n• Snap windows side-by-side or top/bottom on mobile',
           notes: 'Highlight offline capabilities.'
         }
       ]
     });
   }
 
-  // Inject Full Windows 11 Taskbar, Start Menu, Window Manager & Office Styles
+  if (!localStorage.getItem(KEYS.CODE_TABS)) {
+    writeStore(KEYS.CODE_TABS, {
+      activeId: 'tab-html',
+      tabs: [
+        {
+          id: 'tab-html',
+          name: 'widget.html',
+          lang: 'HTML',
+          code: '<!DOCTYPE html>\n<html>\n<body style="margin:0;padding:24px;font-family:system-ui;background:#071e3d;color:#f8fafc;">\n  <h2 style="margin:0 0 8px;color:#38bdf8;">AuroraOS Live Widget</h2>\n  <p>Edit this HTML/CSS/JS and click <b>Run Preview</b>!</p>\n  <button onclick="document.getElementById(\'out\').textContent=new Date().toLocaleTimeString()" style="padding:8px 14px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;">Check Clock</button>\n  <div id="out" style="margin-top:12px;font-size:20px;font-weight:700;color:#34d399;"></div>\n</body>\n</html>'
+        },
+        {
+          id: 'tab-sh',
+          name: 'sync_backup.sh',
+          lang: 'Bash',
+          code: '#!/usr/bin/env bash\nset -euo pipefail\necho "AuroraOS Termux Sync Ready"\ndate\n'
+        },
+        {
+          id: 'tab-py',
+          name: 'cortex_ping.py',
+          lang: 'Python',
+          code: 'import sqlite3, json\nprint(json.dumps({"node": "AuroraOS-Win11", "status": "online"}))\n'
+        }
+      ]
+    });
+  }
+
+  // =========================================================================
+  // FLUENT UI, TASKBAR, START MENU, SNAP & RESIZE STYLES
+  // =========================================================================
   const style = document.createElement('style');
   style.textContent = `
     #w11-icon-column {
@@ -283,7 +540,7 @@
       padding-bottom: env(safe-area-inset-bottom);
       height: calc(48px + env(safe-area-inset-bottom));
       z-index: 10050;
-      background: rgba(20, 23, 31, 0.84);
+      background: rgba(20, 23, 31, 0.86);
       backdrop-filter: blur(26px) saturate(160%);
       -webkit-backdrop-filter: blur(26px) saturate(160%);
       border-top: 1px solid rgba(255, 255, 255, 0.14);
@@ -397,7 +654,7 @@
       width: min(520px, calc(100vw - 16px));
       max-height: calc(100vh - 80px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
       z-index: 10040;
-      background: rgba(24, 27, 36, 0.92);
+      background: rgba(24, 27, 36, 0.94);
       backdrop-filter: blur(32px) saturate(170%);
       -webkit-backdrop-filter: blur(32px) saturate(170%);
       border: 1px solid rgba(255, 255, 255, 0.18);
@@ -441,7 +698,7 @@
       margin-bottom: 16px;
     }
     @media (min-width: 480px) {
-      .w11-sm-grid { grid-template-columns: repeat(6, 1fr); }
+      .w11-sm-grid { grid-template-columns: repeat(5, 1fr); }
     }
     .w11-sm-tile {
       background: rgba(255, 255, 255, 0.04);
@@ -527,7 +784,20 @@
       box-shadow: 0 18px 44px rgba(0, 0, 0, 0.65);
     }
 
-    /* App Windows */
+    /* Snap Ghost Overlay */
+    #w11-snap-ghost {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      background: rgba(56, 189, 248, 0.22);
+      border: 2px solid rgba(56, 189, 248, 0.8);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      transition: all 0.12s ease;
+    }
+
+    /* App Windows + Resize Handles + Snap Picker */
     .w11-app-win {
       position: fixed;
       top: 44px;
@@ -551,7 +821,11 @@
       height: calc(100vh - 48px - max(0px, env(safe-area-inset-top)) - env(safe-area-inset-bottom)) !important;
       border-radius: 0;
     }
+    .w11-app-win.snapped {
+      border-radius: 0;
+    }
     .w11-win-bar {
+      position: relative;
       height: 38px;
       background: rgba(32, 35, 44, 0.96);
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -574,7 +848,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .w11-win-ctrls { display: flex; gap: 4px; }
+    .w11-win-ctrls { display: flex; gap: 3px; align-items: center; }
     .w11-win-ctrls button {
       width: 30px;
       height: 26px;
@@ -587,6 +861,35 @@
     }
     .w11-win-ctrls button:hover { background: rgba(255,255,255,0.12); }
     .w11-win-ctrls button.cls:hover { background: #dc2626; color: #fff; }
+    .w11-snap-menu {
+      display: none;
+      position: absolute;
+      top: 38px;
+      right: 36px;
+      z-index: 50;
+      background: rgba(26, 30, 40, 0.98);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 10px;
+      padding: 8px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.65);
+      grid-template-columns: repeat(2, 68px);
+      gap: 6px;
+    }
+    .w11-snap-opt {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 7px;
+      padding: 6px 4px;
+      color: #e2e8f0;
+      font-size: 10px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+    }
+    .w11-snap-opt:hover, .w11-snap-opt:active {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+    }
     .w11-win-body {
       flex: 1;
       display: flex;
@@ -594,6 +897,40 @@
       overflow: hidden;
       background: #111318;
     }
+
+    /* Resize Handles */
+    .w11-rz-e {
+      position: absolute;
+      top: 38px;
+      right: 0;
+      width: 8px;
+      bottom: 14px;
+      cursor: ew-resize;
+      z-index: 25;
+      touch-action: none;
+    }
+    .w11-rz-s {
+      position: absolute;
+      left: 0;
+      right: 14px;
+      bottom: 0;
+      height: 8px;
+      cursor: ns-resize;
+      z-index: 25;
+      touch-action: none;
+    }
+    .w11-rz-se {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 18px;
+      height: 18px;
+      cursor: nwse-resize;
+      z-index: 30;
+      touch-action: none;
+      background: radial-gradient(circle at 12px 12px, rgba(255,255,255,0.45) 1.5px, transparent 2px);
+    }
+
     .w11-ribbon {
       display: flex;
       flex-wrap: wrap;
@@ -629,7 +966,7 @@
       height: 24px;
       background: #1a1d26;
       border-top: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 0 10px;
+      padding: 0 18px 0 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -640,12 +977,16 @@
   `;
   document.head.appendChild(style);
 
-  // Fluent SVG Icons
+  // =========================================================================
+  // FLUENT SVG ICONS
+  // =========================================================================
   const ICONS = {
     start: '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="2" y="2" width="9" height="9" rx="1.5" fill="#38BDF8"/><rect x="13" y="2" width="9" height="9" rx="1.5" fill="#0EA5E9"/><rect x="2" y="13" width="9" height="9" rx="1.5" fill="#0284C7"/><rect x="13" y="13" width="9" height="9" rx="1.5" fill="#2563EB"/></svg>',
     word: '<svg viewBox="0 0 48 48" width="30" height="30"><rect x="8" y="5" width="32" height="38" rx="4" fill="#185ABD"/><rect x="16" y="5" width="24" height="38" rx="4" fill="#2B7CD3"/><rect x="5" y="13" width="22" height="22" rx="3.5" fill="#103F91"/><text x="16" y="29" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="800" font-size="14">W</text></svg>',
     excel: '<svg viewBox="0 0 48 48" width="30" height="30"><rect x="8" y="5" width="32" height="38" rx="4" fill="#107C41"/><rect x="16" y="5" width="24" height="38" rx="4" fill="#21A366"/><rect x="5" y="13" width="22" height="22" rx="3.5" fill="#0B5A2E"/><text x="16" y="29" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="800" font-size="14">X</text></svg>',
     ppt: '<svg viewBox="0 0 48 48" width="30" height="30"><rect x="8" y="5" width="32" height="38" rx="4" fill="#C43E1C"/><rect x="16" y="5" width="24" height="38" rx="4" fill="#EB6C4D"/><rect x="5" y="13" width="22" height="22" rx="3.5" fill="#A92B11"/><text x="16" y="29" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="800" font-size="14">P</text></svg>',
+    paint: '<svg viewBox="0 0 48 48" width="30" height="30"><path d="M24 6C13.5 6 5 13.8 5 23.5c0 5.3 4.2 9.5 9.5 9.5h3.2c1.7 0 3 1.3 3 3 0 .8-.3 1.5-.8 2-.5.5-.8 1.2-.8 2 0 1.7 1.3 3 3 3h1.9c10.5 0 19-8.1 19-18.5C43 13.8 34.5 6 24 6z" fill="#38BDF8"/><circle cx="14.5" cy="20" r="3" fill="#EF4444"/><circle cx="21" cy="13.5" r="3" fill="#FACC15"/><circle cx="30" cy="14.5" r="3" fill="#22C55E"/><circle cx="34.5" cy="22" r="3" fill="#A855F7"/></svg>',
+    code: '<svg viewBox="0 0 48 48" width="30" height="30"><rect x="5" y="7" width="38" height="34" rx="5" fill="#1E293B" stroke="#38BDF8" stroke-width="2"/><path d="M19 18l-7 6 7 6M29 18l7 6-7 6M26 15l-4 18" stroke="#38BDF8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
     explorer: '<svg viewBox="0 0 48 48" width="30" height="30"><path d="M6 13a4 4 0 0 1 4-4h10l4 4h14a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V13z" fill="#F59E0B"/><rect x="6" y="17" width="36" height="22" rx="3" fill="#FBBF24"/><rect x="14" y="27" width="20" height="12" rx="2" fill="#2563EB"/></svg>',
     terminal: '<svg viewBox="0 0 48 48" width="30" height="30"><rect x="5" y="8" width="38" height="32" rx="5" fill="#0F172A" stroke="#475569" stroke-width="2"/><path d="M13 19l7 5-7 5M23 29h11" stroke="#38BDF8" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
     calc: '<svg viewBox="0 0 48 48" width="30" height="30"><rect x="9" y="5" width="30" height="38" rx="5" fill="#1E293B" stroke="#64748B" stroke-width="1.5"/><rect x="14" y="10" width="20" height="8" rx="2" fill="#38BDF8"/><circle cx="17" cy="24" r="2.2" fill="#cbd5e1"/><circle cx="24" cy="24" r="2.2" fill="#cbd5e1"/><circle cx="31" cy="24" r="2.2" fill="#f59e0b"/><circle cx="17" cy="31" r="2.2" fill="#cbd5e1"/><circle cx="24" cy="31" r="2.2" fill="#cbd5e1"/><circle cx="31" cy="31" r="2.2" fill="#f59e0b"/><rect x="14" y="36" width="20" height="3.5" rx="1.7" fill="#2563EB"/></svg>',
@@ -653,10 +994,85 @@
     personalize: '<svg viewBox="0 0 48 48" width="30" height="30"><rect x="6" y="8" width="36" height="32" rx="5" fill="#1E3A8A" stroke="#60A5FA" stroke-width="1.8"/><circle cx="17" cy="18" r="3.5" fill="#FBBF24"/><path d="M8 35l10-11 8 8 6-6 8 9z" fill="#34D399"/></svg>'
   };
 
-  // Multi-Window Manager + Taskbar Sync
+  // =========================================================================
+  // MULTI-WINDOW MANAGER WITH RESIZE HANDLES & SNAP LAYOUTS
+  // =========================================================================
   let topZ = 200;
   let focusedAppId = null;
   const openWindows = new Map();
+
+  const snapGhost = document.createElement('div');
+  snapGhost.id = 'w11-snap-ghost';
+  document.body.appendChild(snapGhost);
+
+  function getWorkArea() {
+    const tb = document.getElementById('w11-taskbar');
+    const tbH = tb ? tb.offsetHeight : 48;
+    return {
+      top: 0,
+      left: 0,
+      width: window.innerWidth,
+      height: Math.max(260, window.innerHeight - tbH)
+    };
+  }
+
+  function applySnapZone(win, zone) {
+    const wa = getWorkArea();
+    win.classList.remove('maximized');
+    win.classList.add('snapped');
+    if (zone === 'max') {
+      win.classList.remove('snapped');
+      win.classList.add('maximized');
+    } else if (zone === 'left') {
+      win.style.left = '0px';
+      win.style.top = '0px';
+      win.style.width = Math.floor(wa.width / 2) + 'px';
+      win.style.height = wa.height + 'px';
+    } else if (zone === 'right') {
+      const halfW = Math.floor(wa.width / 2);
+      win.style.left = halfW + 'px';
+      win.style.top = '0px';
+      win.style.width = (wa.width - halfW) + 'px';
+      win.style.height = wa.height + 'px';
+    } else if (zone === 'top') {
+      win.style.left = '0px';
+      win.style.top = '0px';
+      win.style.width = wa.width + 'px';
+      win.style.height = Math.floor(wa.height / 2) + 'px';
+    } else if (zone === 'bottom') {
+      const halfH = Math.floor(wa.height / 2);
+      win.style.left = '0px';
+      win.style.top = halfH + 'px';
+      win.style.width = wa.width + 'px';
+      win.style.height = (wa.height - halfH) + 'px';
+    }
+  }
+
+  function showSnapGhost(zone) {
+    if (!zone) {
+      snapGhost.style.display = 'none';
+      return;
+    }
+    const wa = getWorkArea();
+    snapGhost.style.display = 'block';
+    if (zone === 'max') {
+      snapGhost.style.left = '4px';
+      snapGhost.style.top = '4px';
+      snapGhost.style.width = (wa.width - 8) + 'px';
+      snapGhost.style.height = (wa.height - 8) + 'px';
+    } else if (zone === 'left') {
+      snapGhost.style.left = '4px';
+      snapGhost.style.top = '4px';
+      snapGhost.style.width = (Math.floor(wa.width / 2) - 6) + 'px';
+      snapGhost.style.height = (wa.height - 8) + 'px';
+    } else if (zone === 'right') {
+      const halfW = Math.floor(wa.width / 2);
+      snapGhost.style.left = (halfW + 2) + 'px';
+      snapGhost.style.top = '4px';
+      snapGhost.style.width = (wa.width - halfW - 6) + 'px';
+      snapGhost.style.height = (wa.height - 8) + 'px';
+    }
+  }
 
   function syncTaskbarState() {
     document.querySelectorAll('#w11-tb-apps [data-tb-app]').forEach((btn) => {
@@ -713,27 +1129,63 @@
         <div class="w11-win-title">${iconSvg}<span>${escHtml(title)}</span></div>
         <div class="w11-win-ctrls">
           <button type="button" data-act="min" title="Minimize">&#8212;</button>
+          <button type="button" data-act="snap" title="Snap Layouts">&#9707;</button>
           <button type="button" data-act="max" title="Maximize/Restore">&#9744;</button>
           <button type="button" class="cls" data-act="close" title="Close">&times;</button>
         </div>
+        <div class="w11-snap-menu">
+          <button type="button" class="w11-snap-opt" data-snap-zone="left">&#9703; Left 50%</button>
+          <button type="button" class="w11-snap-opt" data-snap-zone="right">&#9704; Right 50%</button>
+          <button type="button" class="w11-snap-opt" data-snap-zone="top">&#9705; Top 50%</button>
+          <button type="button" class="w11-snap-opt" data-snap-zone="bottom">&#9706; Bottom 50%</button>
+        </div>
       </div>
       <div class="w11-win-body"></div>
+      <div class="w11-rz-e" data-rz="e"></div>
+      <div class="w11-rz-s" data-rz="s"></div>
+      <div class="w11-rz-se" data-rz="se"></div>
     `;
 
     win.addEventListener('mousedown', () => focusWindow(win));
     win.addEventListener('touchstart', () => focusWindow(win), { passive: true });
 
     const bar = win.querySelector('.w11-win-bar');
+    const snapMenu = win.querySelector('.w11-snap-menu');
+
     bar.querySelector('[data-act="min"]').addEventListener('click', (e) => {
       e.stopPropagation();
+      snapMenu.style.display = 'none';
       win.style.display = 'none';
       if (focusedAppId === appId) focusedAppId = null;
       syncTaskbarState();
     });
+
+    bar.querySelector('[data-act="snap"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      snapMenu.style.display = snapMenu.style.display === 'grid' ? 'none' : 'grid';
+    });
+
+    snapMenu.querySelectorAll('[data-snap-zone]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        snapMenu.style.display = 'none';
+        applySnapZone(win, btn.dataset.snapZone);
+      });
+    });
+
     bar.querySelector('[data-act="max"]').addEventListener('click', (e) => {
       e.stopPropagation();
+      snapMenu.style.display = 'none';
+      win.classList.remove('snapped');
       win.classList.toggle('maximized');
     });
+
+    bar.addEventListener('dblclick', (e) => {
+      if (e.target.closest('button')) return;
+      win.classList.remove('snapped');
+      win.classList.toggle('maximized');
+    });
+
     bar.querySelector('[data-act="close"]').addEventListener('click', (e) => {
       e.stopPropagation();
       win.remove();
@@ -742,23 +1194,87 @@
       syncTaskbarState();
     });
 
-    // Window drag support
-    let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    // Drag + Edge-Snap Support
+    let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0, pendingSnap = null;
     bar.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button') || win.classList.contains('maximized')) return;
+      if (e.target.closest('button') || e.target.closest('.w11-snap-menu')) return;
+      snapMenu.style.display = 'none';
+      if (win.classList.contains('maximized') || win.classList.contains('snapped')) {
+        const rect = win.getBoundingClientRect();
+        win.classList.remove('maximized', 'snapped');
+        win.style.width = Math.min(640, window.innerWidth - 32) + 'px';
+        win.style.height = Math.min(460, window.innerHeight - 110) + 'px';
+        win.style.left = Math.max(8, Math.min(window.innerWidth - 200, e.clientX - 120)) + 'px';
+        win.style.top = Math.max(4, rect.top) + 'px';
+      }
       dragging = true;
+      pendingSnap = null;
       sx = e.clientX;
       sy = e.clientY;
       ox = win.offsetLeft;
       oy = win.offsetTop;
       bar.setPointerCapture(e.pointerId);
     });
+
     bar.addEventListener('pointermove', (e) => {
       if (!dragging) return;
-      win.style.left = Math.max(0, Math.min(window.innerWidth - 120, ox + (e.clientX - sx))) + 'px';
+      win.style.left = Math.max(-80, Math.min(window.innerWidth - 100, ox + (e.clientX - sx))) + 'px';
       win.style.top = Math.max(0, Math.min(window.innerHeight - 90, oy + (e.clientY - sy))) + 'px';
+
+      if (e.clientX <= 16) pendingSnap = 'left';
+      else if (e.clientX >= window.innerWidth - 16) pendingSnap = 'right';
+      else if (e.clientY <= 12) pendingSnap = 'max';
+      else pendingSnap = null;
+      showSnapGhost(pendingSnap);
     });
-    bar.addEventListener('pointerup', () => { dragging = false; });
+
+    bar.addEventListener('pointerup', () => {
+      if (!dragging) return;
+      dragging = false;
+      showSnapGhost(null);
+      if (pendingSnap) {
+        applySnapZone(win, pendingSnap);
+        pendingSnap = null;
+      }
+    });
+
+    // Edge & Corner Resize Handles
+    win.querySelectorAll('[data-rz]').forEach((handle) => {
+      let resizing = false, dir = '', rsx = 0, rsy = 0, sw = 0, sh = 0;
+      handle.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        if (win.classList.contains('maximized')) {
+          const rect = win.getBoundingClientRect();
+          win.classList.remove('maximized');
+          win.style.left = rect.left + 'px';
+          win.style.top = rect.top + 'px';
+          win.style.width = rect.width + 'px';
+          win.style.height = rect.height + 'px';
+        }
+        win.classList.remove('snapped');
+        resizing = true;
+        dir = handle.dataset.rz;
+        rsx = e.clientX;
+        rsy = e.clientY;
+        const rect = win.getBoundingClientRect();
+        sw = rect.width;
+        sh = rect.height;
+        handle.setPointerCapture(e.pointerId);
+      });
+      handle.addEventListener('pointermove', (e) => {
+        if (!resizing) return;
+        const wa = getWorkArea();
+        if (dir === 'e' || dir === 'se') {
+          const maxW = wa.width - win.offsetLeft;
+          win.style.width = Math.max(290, Math.min(maxW, sw + (e.clientX - rsx))) + 'px';
+        }
+        if (dir === 's' || dir === 'se') {
+          const maxH = wa.height - win.offsetTop;
+          win.style.height = Math.max(230, Math.min(maxH, sh + (e.clientY - rsy))) + 'px';
+        }
+      });
+      handle.addEventListener('pointerup', () => { resizing = false; });
+    });
 
     const body = win.querySelector('.w11-win-body');
     renderBodyFn(body, win);
@@ -768,7 +1284,9 @@
     return win;
   }
 
+  // =========================================================================
   // 1. MICROSOFT WORD (Real .docx Import + Real .docx Export)
+  // =========================================================================
   function openWord(docIdToLoad) {
     createWindow('word', 'Microsoft Word', ICONS.word, (body) => {
       let docs = readStore(KEYS.WORD_DOCS, []);
@@ -781,7 +1299,7 @@
 
       body.innerHTML = `
         <div class="w11-ribbon" style="background:#16386e;">
-          <select class="w11-rinput" id="wd-doc-select" style="max-width:145px;"></select>
+          <select class="w11-rinput" id="wd-doc-select" style="max-width:140px;"></select>
           <button type="button" class="w11-rbtn" id="wd-new">+ New</button>
           <button type="button" class="w11-rbtn emerald" id="wd-open-docx">Open .docx</button>
           <input type="file" id="wd-file-input" accept=".docx,.txt,.html" style="display:none;">
@@ -863,7 +1381,6 @@
         updateStats();
       });
 
-      // Import real .docx / .txt / .html file
       body.querySelector('#wd-open-docx').addEventListener('click', () => fileInput.click());
       fileInput.addEventListener('change', async (e) => {
         const file = e.target.files && e.target.files[0];
@@ -896,7 +1413,6 @@
         }
       });
 
-      // Export real OOXML .docx file
       body.querySelector('#wd-export-docx').addEventListener('click', async () => {
         try {
           status.textContent = 'Building .docx...';
@@ -928,7 +1444,9 @@
     }, true);
   }
 
+  // =========================================================================
   // 2. MICROSOFT EXCEL (Real .xlsx Import + Real .xlsx Export)
+  // =========================================================================
   function openExcel() {
     createWindow('excel', 'Microsoft Excel', ICONS.excel, (body) => {
       let sheet = readStore(KEYS.EXCEL_SHEETS, { name: 'Budget_Tracker.xlsx', rows: 26, cols: 10, cells: {} });
@@ -1069,7 +1587,6 @@
         renderGrid();
       });
 
-      // Import real .xlsx / .xls / .csv using SheetJS
       body.querySelector('#xl-open-xlsx').addEventListener('click', () => fileInput.click());
       fileInput.addEventListener('change', async (e) => {
         const file = e.target.files && e.target.files[0];
@@ -1112,7 +1629,7 @@
           fx.value = sheet.cells['A1'] ?? '';
           sheetNameEl.textContent = sheet.name;
           renderGrid();
-          sumBar.textContent = `Imported ${file.name} (${wb.SheetNames.length} sheet)`;
+          sumBar.textContent = `Imported ${file.name}`;
         } catch (err) {
           alert('Could not open spreadsheet: ' + err.message);
           sumBar.textContent = 'Import failed';
@@ -1121,7 +1638,6 @@
         }
       });
 
-      // Export real .xlsx workbook with formulas + evaluated values using SheetJS
       body.querySelector('#xl-export-xlsx').addEventListener('click', () => {
         try {
           if (!window.XLSX) throw new Error('SheetJS offline library not loaded');
@@ -1180,7 +1696,9 @@
     }, true);
   }
 
-  // 3. MICROSOFT POWERPOINT
+  // =========================================================================
+  // 3. MICROSOFT POWERPOINT (Real .pptx Import + Real .pptx Export)
+  // =========================================================================
   function openPowerPoint() {
     createWindow('ppt', 'Microsoft PowerPoint', ICONS.ppt, (body) => {
       let deck = readStore(KEYS.PPT_DECKS, { name: 'Deck.pptx', theme: 'aurora', slides: [{ title: 'New Slide', subtitle: '', body: '', notes: '' }] });
@@ -1195,6 +1713,9 @@
 
       body.innerHTML = `
         <div class="w11-ribbon" style="background:#7c2d12;">
+          <button type="button" class="w11-rbtn emerald" id="pp-open-pptx">Open .pptx</button>
+          <input type="file" id="pp-file-input" accept=".pptx" style="display:none;">
+          <button type="button" class="w11-rbtn primary" id="pp-export-pptx">Export .pptx</button>
           <button type="button" class="w11-rbtn" id="pp-add">+ Slide</button>
           <button type="button" class="w11-rbtn" id="pp-del">Delete</button>
           <select class="w11-rinput" id="pp-theme">
@@ -1203,7 +1724,7 @@
             <option value="crimson">Theme: Executive Red</option>
             <option value="light">Theme: Clean Light</option>
           </select>
-          <button type="button" class="w11-rbtn primary" id="pp-present">&#9654; Slideshow</button>
+          <button type="button" class="w11-rbtn" style="background:#ea580c;border-color:#fb923c;" id="pp-present">&#9654; Slideshow</button>
         </div>
         <div style="flex:1;display:flex;overflow:hidden;">
           <div id="pp-thumbs" style="width:110px;background:#181a22;border-right:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px;flex-shrink:0;"></div>
@@ -1217,7 +1738,7 @@
         </div>
         <div class="w11-status-bar">
           <span id="pp-count">Slide 1 of 1</span>
-          <span>Auto-saved offline</span>
+          <span id="pp-status">${escHtml(deck.name || 'AuroraOS_Overview.pptx')}</span>
         </div>
       `;
 
@@ -1228,6 +1749,8 @@
       const bIn = body.querySelector('#pp-body');
       const themeSel = body.querySelector('#pp-theme');
       const countEl = body.querySelector('#pp-count');
+      const statusEl = body.querySelector('#pp-status');
+      const fileInput = body.querySelector('#pp-file-input');
 
       themeSel.value = deck.theme || 'aurora';
 
@@ -1264,11 +1787,51 @@
         render();
       }
 
-      [tIn, sIn, bIn].forEach((inp) => inp.addEventListener('change', save));
+      [tIn, sIn, bIn].forEach((inp) => inp.addEventListener('input', save));
       themeSel.addEventListener('change', () => {
         deck.theme = themeSel.value;
         writeStore(KEYS.PPT_DECKS, deck);
         render();
+      });
+
+      // Import real .pptx
+      body.querySelector('#pp-open-pptx').addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        try {
+          statusEl.textContent = `Importing ${file.name}...`;
+          const buf = await file.arrayBuffer();
+          const importedSlides = await importPptxArrayBuffer(buf);
+          deck = {
+            name: file.name,
+            theme: deck.theme || 'aurora',
+            slides: importedSlides
+          };
+          idx = 0;
+          writeStore(KEYS.PPT_DECKS, deck);
+          render();
+          statusEl.textContent = `Imported ${file.name} (${importedSlides.length} slides)`;
+        } catch (err) {
+          alert('Could not open .pptx: ' + err.message);
+          statusEl.textContent = 'Import failed';
+        } finally {
+          fileInput.value = '';
+        }
+      });
+
+      // Export real .pptx
+      body.querySelector('#pp-export-pptx').addEventListener('click', async () => {
+        try {
+          statusEl.textContent = 'Building .pptx...';
+          const blob = await exportPptxBlob(deck);
+          const outName = (deck.name || 'AuroraOS_Deck').replace(/\.pptx?$/i, '') + '.pptx';
+          downloadBlob(outName, blob);
+          statusEl.textContent = `Exported ${outName}`;
+        } catch (err) {
+          alert('Export error: ' + err.message);
+          statusEl.textContent = 'Export failed';
+        }
       });
 
       body.querySelector('#pp-add').addEventListener('click', () => {
@@ -1317,17 +1880,398 @@
     }, true);
   }
 
-  // 4. FILE EXPLORER
+  // =========================================================================
+  // 4. MICROSOFT PAINT (Touch-Ready Canvas, Shapes, Flood Fill & PNG Export)
+  // =========================================================================
+  function openPaint() {
+    createWindow('paint', 'Microsoft Paint', ICONS.paint, (body) => {
+      const SWATCHES = ['#0f172a', '#ffffff', '#ef4444', '#f97316', '#facc15', '#22c55e', '#06b6d4', '#2563eb', '#8b5cf6', '#ec4899', '#92400e', '#64748b'];
+      let tool = 'brush';
+      let color = '#2563eb';
+      let brushSize = 5;
+      const undoStack = [];
+
+      body.innerHTML = `
+        <div class="w11-ribbon" style="background:#0c4a6e;">
+          <button type="button" class="w11-rbtn primary" data-ptool="brush">Brush</button>
+          <button type="button" class="w11-rbtn" data-ptool="eraser">Eraser</button>
+          <button type="button" class="w11-rbtn" data-ptool="line">Line</button>
+          <button type="button" class="w11-rbtn" data-ptool="rect">Rect</button>
+          <button type="button" class="w11-rbtn" data-ptool="circle">Circle</button>
+          <button type="button" class="w11-rbtn" data-ptool="fill">Fill</button>
+          <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#e0f2fe;">
+            Size <input type="range" id="pt-size" min="1" max="32" value="5" style="width:68px;">
+          </label>
+          <input type="color" id="pt-color" value="#2563eb" style="width:30px;height:28px;border:0;background:transparent;cursor:pointer;">
+          <button type="button" class="w11-rbtn" id="pt-undo">Undo</button>
+          <button type="button" class="w11-rbtn" id="pt-clear">Clear</button>
+          <button type="button" class="w11-rbtn emerald" id="pt-open-img">Open Img</button>
+          <input type="file" id="pt-img-input" accept="image/*" style="display:none;">
+          <button type="button" class="w11-rbtn primary" id="pt-save-png">Save .png</button>
+        </div>
+        <div style="display:flex;gap:5px;padding:6px 10px;background:#161b26;border-bottom:1px solid rgba(255,255,255,0.08);overflow-x:auto;flex-shrink:0;">
+          ${SWATCHES.map((hex) => `<button type="button" data-swatch="${hex}" style="width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);background:${hex};cursor:pointer;flex-shrink:0;"></button>`).join('')}
+        </div>
+        <div style="flex:1;overflow:auto;background:#1e293b;display:flex;align-items:center;justify-content:center;padding:10px;">
+          <canvas id="pt-canvas" width="720" height="460" style="background:#ffffff;border-radius:4px;box-shadow:0 8px 28px rgba(0,0,0,0.5);touch-action:none;max-width:100%;max-height:100%;cursor:crosshair;"></canvas>
+        </div>
+        <div class="w11-status-bar">
+          <span id="pt-status">Tool: Brush • Size: 5px</span>
+          <span>720 &times; 460 px</span>
+        </div>
+      `;
+
+      const canvas = body.querySelector('#pt-canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const status = body.querySelector('#pt-status');
+      const colorInp = body.querySelector('#pt-color');
+      const sizeInp = body.querySelector('#pt-size');
+      const imgInput = body.querySelector('#pt-img-input');
+
+      // Initialize white canvas or restore saved artwork
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const savedDataUrl = localStorage.getItem(KEYS.PAINT_DATA);
+      if (savedDataUrl) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        img.src = savedDataUrl;
+      }
+
+      function pushUndo() {
+        if (undoStack.length >= 15) undoStack.shift();
+        undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      }
+
+      function persistCanvas() {
+        try {
+          localStorage.setItem(KEYS.PAINT_DATA, canvas.toDataURL('image/png'));
+        } catch (_) {}
+      }
+
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: Math.round(((e.clientX - rect.left) / rect.width) * canvas.width),
+          y: Math.round(((e.clientY - rect.top) / rect.height) * canvas.height)
+        };
+      }
+
+      function floodFill(startX, startY, hexColor) {
+        if (startX < 0 || startY < 0 || startX >= canvas.width || startY >= canvas.height) return;
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        const w = canvas.width, h = canvas.height;
+        const idx0 = (startY * w + startX) * 4;
+        const sr = data[idx0], sg = data[idx0 + 1], sb = data[idx0 + 2];
+
+        const tr = parseInt(hexColor.slice(1, 3), 16);
+        const tg = parseInt(hexColor.slice(3, 5), 16);
+        const tb = parseInt(hexColor.slice(5, 7), 16);
+        if (Math.abs(sr - tr) < 6 && Math.abs(sg - tg) < 6 && Math.abs(sb - tb) < 6) return;
+
+        const visited = new Uint8Array(w * h);
+        const stack = [startY * w + startX];
+        while (stack.length) {
+          const p = stack.pop();
+          if (visited[p]) continue;
+          visited[p] = 1;
+          const off = p * 4;
+          if (Math.abs(data[off] - sr) <= 24 && Math.abs(data[off + 1] - sg) <= 24 && Math.abs(data[off + 2] - sb) <= 24) {
+            data[off] = tr;
+            data[off + 1] = tg;
+            data[off + 2] = tb;
+            data[off + 3] = 255;
+            const x = p % w, y = (p - x) / w;
+            if (x > 0) stack.push(p - 1);
+            if (x + 1 < w) stack.push(p + 1);
+            if (y > 0) stack.push(p - w);
+            if (y + 1 < h) stack.push(p + w);
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+
+      let drawing = false, startPt = null, snapshot = null;
+
+      canvas.addEventListener('pointerdown', (e) => {
+        const pt = getPos(e);
+        pushUndo();
+        if (tool === 'fill') {
+          floodFill(pt.x, pt.y, color);
+          persistCanvas();
+          return;
+        }
+        drawing = true;
+        startPt = pt;
+        snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        canvas.setPointerCapture(e.pointerId);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = brushSize;
+        ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : color;
+        if (tool === 'brush' || tool === 'eraser') {
+          ctx.beginPath();
+          ctx.moveTo(pt.x, pt.y);
+          ctx.lineTo(pt.x + 0.1, pt.y + 0.1);
+          ctx.stroke();
+        }
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!drawing) return;
+        const pt = getPos(e);
+        if (tool === 'brush' || tool === 'eraser') {
+          ctx.lineTo(pt.x, pt.y);
+          ctx.stroke();
+        } else if (snapshot && startPt) {
+          ctx.putImageData(snapshot, 0, 0);
+          ctx.beginPath();
+          if (tool === 'line') {
+            ctx.moveTo(startPt.x, startPt.y);
+            ctx.lineTo(pt.x, pt.y);
+          } else if (tool === 'rect') {
+            ctx.strokeRect(startPt.x, startPt.y, pt.x - startPt.x, pt.y - startPt.y);
+            return;
+          } else if (tool === 'circle') {
+            const rx = Math.abs(pt.x - startPt.x) / 2;
+            const ry = Math.abs(pt.y - startPt.y) / 2;
+            const cx = (startPt.x + pt.x) / 2;
+            const cy = (startPt.y + pt.y) / 2;
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          }
+          ctx.stroke();
+        }
+      });
+
+      canvas.addEventListener('pointerup', () => {
+        if (!drawing) return;
+        drawing = false;
+        snapshot = null;
+        persistCanvas();
+      });
+
+      body.querySelectorAll('[data-ptool]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          tool = btn.dataset.ptool;
+          body.querySelectorAll('[data-ptool]').forEach((b) => b.classList.remove('primary'));
+          btn.classList.add('primary');
+          status.textContent = `Tool: ${tool.toUpperCase()} • Size: ${brushSize}px`;
+        });
+      });
+
+      sizeInp.addEventListener('input', () => {
+        brushSize = Number(sizeInp.value);
+        status.textContent = `Tool: ${tool.toUpperCase()} • Size: ${brushSize}px`;
+      });
+
+      colorInp.addEventListener('input', () => { color = colorInp.value; });
+      body.querySelectorAll('[data-swatch]').forEach((sw) => {
+        sw.addEventListener('click', () => {
+          color = sw.dataset.swatch;
+          colorInp.value = color;
+        });
+      });
+
+      body.querySelector('#pt-undo').addEventListener('click', () => {
+        const prev = undoStack.pop();
+        if (prev) {
+          ctx.putImageData(prev, 0, 0);
+          persistCanvas();
+        }
+      });
+
+      body.querySelector('#pt-clear').addEventListener('click', () => {
+        pushUndo();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        persistCanvas();
+      });
+
+      body.querySelector('#pt-open-img').addEventListener('click', () => imgInput.click());
+      imgInput.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const url = URL.createObjectURL(f);
+        const img = new Image();
+        img.onload = () => {
+          pushUndo();
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          persistCanvas();
+        };
+        img.src = url;
+        imgInput.value = '';
+      });
+
+      body.querySelector('#pt-save-png').addEventListener('click', () => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            downloadBlob('AuroraOS_Paint.png', blob);
+            status.textContent = 'Saved AuroraOS_Paint.png';
+          }
+        }, 'image/png');
+      });
+    }, true);
+  }
+
+  // =========================================================================
+  // 5. CODE STUDIO (Multi-Tab Editor + Line Numbers + Live HTML Preview)
+  // =========================================================================
+  function openCodeStudio() {
+    createWindow('code', 'Code Studio', ICONS.code, (body) => {
+      let state = readStore(KEYS.CODE_TABS, { activeId: 'tab-1', tabs: [{ id: 'tab-1', name: 'index.html', lang: 'HTML', code: '<h1>Hello AuroraOS</h1>' }] });
+      let previewVisible = false;
+
+      body.innerHTML = `
+        <div class="w11-ribbon" style="background:#172033;">
+          <div id="cs-tabs" style="display:flex;gap:4px;overflow-x:auto;max-width:260px;"></div>
+          <button type="button" class="w11-rbtn" id="cs-new-tab">+ Tab</button>
+          <button type="button" class="w11-rbtn emerald" id="cs-run">&#9654; Run Preview</button>
+          <button type="button" class="w11-rbtn" id="cs-open-file">Open</button>
+          <input type="file" id="cs-file-input" style="display:none;">
+          <button type="button" class="w11-rbtn primary" id="cs-save-file">Export</button>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:flex;overflow:hidden;background:#0b0f19;">
+            <pre id="cs-gutter" style="margin:0;padding:12px 8px;background:#0f1422;color:#64748b;text-align:right;user-select:none;font:13px/1.55 monospace;border-right:1px solid rgba(255,255,255,0.08);overflow:hidden;min-width:36px;">1</pre>
+            <textarea id="cs-editor" spellcheck="false" autocomplete="off" style="flex:1;background:#0b0f19;color:#e2e8f0;border:0;outline:none;padding:12px;font:13px/1.55 monospace;resize:none;white-space:pre;overflow:auto;"></textarea>
+          </div>
+          <iframe id="cs-preview" sandbox="allow-scripts" style="display:none;height:44%;border:0;border-top:2px solid #2563eb;background:#ffffff;"></iframe>
+        </div>
+        <div class="w11-status-bar">
+          <span id="cs-file-info">Ready</span>
+          <span id="cs-cursor">Ln 1, Col 1</span>
+        </div>
+      `;
+
+      const tabsEl = body.querySelector('#cs-tabs');
+      const gutter = body.querySelector('#cs-gutter');
+      const editor = body.querySelector('#cs-editor');
+      const preview = body.querySelector('#cs-preview');
+      const infoEl = body.querySelector('#cs-file-info');
+      const cursorEl = body.querySelector('#cs-cursor');
+      const fileInput = body.querySelector('#cs-file-input');
+
+      function activeTab() {
+        return state.tabs.find((t) => t.id === state.activeId) || state.tabs[0];
+      }
+
+      function updateGutter() {
+        const lines = editor.value.split('\n').length;
+        gutter.textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+        gutter.scrollTop = editor.scrollTop;
+      }
+
+      function updateCursor() {
+        const upTo = editor.value.slice(0, editor.selectionStart || 0).split('\n');
+        cursorEl.textContent = `Ln ${upTo.length}, Col ${upTo[upTo.length - 1].length + 1}`;
+      }
+
+      function renderTabs() {
+        const cur = activeTab();
+        tabsEl.innerHTML = state.tabs.map((t) => `
+          <button type="button" data-tid="${escHtml(t.id)}" class="w11-rbtn ${t.id === cur.id ? 'primary' : ''}" style="white-space:nowrap;">${escHtml(t.name)}</button>
+        `).join('');
+        tabsEl.querySelectorAll('[data-tid]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.activeId = btn.dataset.tid;
+            writeStore(KEYS.CODE_TABS, state);
+            loadActiveTab();
+          });
+        });
+      }
+
+      function loadActiveTab() {
+        const cur = activeTab();
+        editor.value = cur.code || '';
+        infoEl.textContent = `${cur.name} • ${cur.lang || 'Text'} • Auto-saved`;
+        updateGutter();
+        updateCursor();
+        renderTabs();
+        if (previewVisible) preview.srcdoc = editor.value;
+      }
+
+      editor.addEventListener('input', () => {
+        const cur = activeTab();
+        cur.code = editor.value;
+        writeStore(KEYS.CODE_TABS, state);
+        updateGutter();
+        updateCursor();
+        if (previewVisible) preview.srcdoc = editor.value;
+      });
+
+      editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; });
+      editor.addEventListener('click', updateCursor);
+      editor.addEventListener('keyup', updateCursor);
+      editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const s = editor.selectionStart;
+          const end = editor.selectionEnd;
+          editor.value = editor.value.slice(0, s) + '  ' + editor.value.slice(end);
+          editor.selectionStart = editor.selectionEnd = s + 2;
+          editor.dispatchEvent(new Event('input'));
+        }
+      });
+
+      body.querySelector('#cs-new-tab').addEventListener('click', () => {
+        const name = prompt('New file name:', `snippet_${state.tabs.length + 1}.html`);
+        if (!name) return;
+        const ext = name.split('.').pop().toLowerCase();
+        const lang = ext === 'py' ? 'Python' : ext === 'sh' ? 'Bash' : ext === 'js' ? 'JavaScript' : 'HTML';
+        const newTab = { id: 'tab-' + Date.now(), name: name.trim(), lang, code: '' };
+        state.tabs.push(newTab);
+        state.activeId = newTab.id;
+        writeStore(KEYS.CODE_TABS, state);
+        loadActiveTab();
+      });
+
+      body.querySelector('#cs-run').addEventListener('click', () => {
+        previewVisible = !previewVisible;
+        preview.style.display = previewVisible ? 'block' : 'none';
+        if (previewVisible) preview.srcdoc = editor.value;
+      });
+
+      body.querySelector('#cs-open-file').addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', async (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const text = await f.text();
+        const newTab = { id: 'tab-' + Date.now(), name: f.name, lang: f.name.split('.').pop().toUpperCase(), code: text };
+        state.tabs.push(newTab);
+        state.activeId = newTab.id;
+        writeStore(KEYS.CODE_TABS, state);
+        loadActiveTab();
+        fileInput.value = '';
+      });
+
+      body.querySelector('#cs-save-file').addEventListener('click', () => {
+        const cur = activeTab();
+        downloadBlob(cur.name, new Blob([cur.code], { type: 'text/plain;charset=utf-8' }));
+        infoEl.textContent = `Exported ${cur.name}`;
+      });
+
+      loadActiveTab();
+    }, true);
+  }
+
+  // =========================================================================
+  // 6. FILE EXPLORER
+  // =========================================================================
   function openExplorer() {
     createWindow('explorer', 'File Explorer', ICONS.explorer, (body) => {
       const docs = readStore(KEYS.WORD_DOCS, []);
       const sheet = readStore(KEYS.EXCEL_SHEETS, { name: 'Budget_Tracker.xlsx' });
       const deck = readStore(KEYS.PPT_DECKS, { name: 'AuroraOS_Overview.pptx' });
+      const codeState = readStore(KEYS.CODE_TABS, { tabs: [] });
 
       const items = [
         ...docs.map((d) => ({ name: d.title, kind: 'Word Document (.docx)', icon: ICONS.word, open: () => openWord(d.id) })),
         { name: sheet.name || 'Budget_Tracker.xlsx', kind: 'Excel Workbook (.xlsx)', icon: ICONS.excel, open: openExcel },
-        { name: deck.name || 'AuroraOS_Overview.pptx', kind: 'PowerPoint Deck (.pptx)', icon: ICONS.ppt, open: openPowerPoint }
+        { name: deck.name || 'AuroraOS_Overview.pptx', kind: 'PowerPoint Deck (.pptx)', icon: ICONS.ppt, open: openPowerPoint },
+        { name: 'AuroraOS_Paint.png', kind: 'Paint Canvas Artwork', icon: ICONS.paint, open: openPaint },
+        ...(codeState.tabs || []).slice(0, 2).map((t) => ({ name: t.name, kind: 'Code Studio Source', icon: ICONS.code, open: openCodeStudio }))
       ];
 
       body.innerHTML = `
@@ -1350,11 +2294,13 @@
     }, false);
   }
 
-  // 5. WINDOWS TERMINAL / POWERSHELL
+  // =========================================================================
+  // 7. WINDOWS TERMINAL / POWERSHELL
+  // =========================================================================
   function openTerminal() {
     createWindow('terminal', 'Windows Terminal (PowerShell)', ICONS.terminal, (body) => {
       body.innerHTML = `
-        <div id="tm-out" style="flex:1;overflow-y:auto;padding:12px;font:13px/1.5 monospace;color:#e2e8f0;white-space:pre-wrap;">AuroraOS PowerShell [Version 8.6.2026]
+        <div id="tm-out" style="flex:1;overflow-y:auto;padding:12px;font:13px/1.5 monospace;color:#e2e8f0;white-space:pre-wrap;">AuroraOS PowerShell [Version 8.7.2026]
 (c) Jeramy Adams. All rights reserved.
 Type 'help' for available commands.
 
@@ -1382,21 +2328,23 @@ Type 'help' for available commands.
         switch ((cmd || '').toLowerCase()) {
           case '': break;
           case 'help':
-            print('Commands: help, ver, systeminfo, ls, word, excel, ppt, explorer, calc, taskmgr, wallpaper, clear');
+            print('Commands: help, ver, systeminfo, ls, word, excel, ppt, paint, code, explorer, calc, taskmgr, wallpaper, clear');
             break;
           case 'ver':
-            print('AuroraOS v8.6 (Win11 Android Capacitor + Offline Office Suite)');
+            print('AuroraOS v8.7 (Win11 Android Capacitor + Full Office, Paint & Code Studio)');
             break;
           case 'systeminfo':
-            print('Host Name:   MOTO-G-5G\nOS Name:     AuroraOS v8.6\nDeveloper:   Jeramy Adams\nEngines:     SheetJS (.xlsx) + JSZip OOXML (.docx)');
+            print('Host Name:   MOTO-G-5G\nOS Name:     AuroraOS v8.7\nDeveloper:   Jeramy Adams\nEngines:     SheetJS (.xlsx) + JSZip OOXML (.docx/.pptx)');
             break;
           case 'ls':
           case 'dir':
-            print('Documents/\n  AuroraOS Project Notes.docx\n  Budget_Tracker.xlsx\n  AuroraOS_Overview.pptx');
+            print('Documents/\n  AuroraOS Project Notes.docx\n  Budget_Tracker.xlsx\n  AuroraOS_Overview.pptx\n  AuroraOS_Paint.png');
             break;
           case 'word': openWord(); print('Launching Microsoft Word...'); break;
           case 'excel': openExcel(); print('Launching Microsoft Excel...'); break;
           case 'ppt': case 'powerpoint': openPowerPoint(); print('Launching Microsoft PowerPoint...'); break;
+          case 'paint': openPaint(); print('Launching Microsoft Paint...'); break;
+          case 'code': case 'studio': openCodeStudio(); print('Launching Code Studio...'); break;
           case 'explorer': openExplorer(); print('Launching File Explorer...'); break;
           case 'calc': openCalculator(); print('Launching Calculator...'); break;
           case 'taskmgr': openTaskManager(); print('Launching Task Manager...'); break;
@@ -1413,7 +2361,9 @@ Type 'help' for available commands.
     }, false);
   }
 
-  // 6. CALCULATOR
+  // =========================================================================
+  // 8. CALCULATOR & 9. TASK MANAGER
+  // =========================================================================
   function openCalculator() {
     createWindow('calc', 'Calculator', ICONS.calc, (body) => {
       let expr = '';
@@ -1449,7 +2399,6 @@ Type 'help' for available commands.
     }, false);
   }
 
-  // 7. TASK MANAGER
   function openTaskManager() {
     createWindow('taskmgr', 'Task Manager', ICONS.taskmgr, (body) => {
       const rows = Array.from(openWindows.entries());
@@ -1482,11 +2431,15 @@ Type 'help' for available commands.
     }, false);
   }
 
-  // App Registry
+  // =========================================================================
+  // APP REGISTRY, DESKTOP SHORTCUTS, START MENU & TASKBAR
+  // =========================================================================
   const APPS = [
     { id: 'word', label: 'Word', keywords: 'word docx document write office', icon: ICONS.word, fn: () => openWord() },
     { id: 'excel', label: 'Excel', keywords: 'excel xlsx spreadsheet csv formula office', icon: ICONS.excel, fn: openExcel },
     { id: 'ppt', label: 'PowerPoint', keywords: 'powerpoint pptx slides presentation office', icon: ICONS.ppt, fn: openPowerPoint },
+    { id: 'paint', label: 'Paint', keywords: 'paint draw canvas art image png', icon: ICONS.paint, fn: openPaint },
+    { id: 'code', label: 'Code Studio', keywords: 'code ide html python bash javascript editor', icon: ICONS.code, fn: openCodeStudio },
     { id: 'explorer', label: 'Explorer', keywords: 'files folder documents explorer', icon: ICONS.explorer, fn: openExplorer },
     { id: 'terminal', label: 'Terminal', keywords: 'terminal powershell cmd bash shell', icon: ICONS.terminal, fn: openTerminal },
     { id: 'calc', label: 'Calculator', keywords: 'calculator math numbers', icon: ICONS.calc, fn: openCalculator },
@@ -1503,7 +2456,7 @@ Type 'help' for available commands.
   // Desktop Shortcut Grid (Positioned below Personalize icon)
   const deskGrid = document.createElement('div');
   deskGrid.id = 'w11-icon-column';
-  deskGrid.innerHTML = APPS.slice(0, 6).map((a) => `
+  deskGrid.innerHTML = APPS.slice(0, 8).map((a) => `
     <div class="w11-desk-app" data-launch="${a.id}" role="button" tabindex="0">
       ${a.icon}
       <span>${a.label}</span>
@@ -1523,7 +2476,7 @@ Type 'help' for available commands.
   startMenu.id = 'w11-start-menu';
   startMenu.innerHTML = `
     <div class="w11-sm-body">
-      <input type="text" class="w11-sm-search" id="w11-sm-search-input" placeholder="Search for apps, .docx / .xlsx files, and settings...">
+      <input type="text" class="w11-sm-search" id="w11-sm-search-input" placeholder="Search apps, .docx / .xlsx / .pptx files, Paint, Code...">
       <div class="w11-sm-sec-head">
         <span>Pinned</span>
         <span style="font-size:11px;color:#38bdf8;font-weight:600;">AuroraOS Win11</span>
@@ -1580,7 +2533,8 @@ Type 'help' for available commands.
     const recItems = [
       ...docs.slice(0, 2).map((d) => ({ title: d.title, sub: 'Microsoft Word • ' + (d.updated || 'Saved'), icon: ICONS.word, open: () => openWord(d.id) })),
       { title: sheet.name || 'Budget_Tracker.xlsx', sub: 'Microsoft Excel • Workbook', icon: ICONS.excel, open: openExcel },
-      { title: deck.name || 'AuroraOS_Overview.pptx', sub: 'Microsoft PowerPoint • Deck', icon: ICONS.ppt, open: openPowerPoint }
+      { title: deck.name || 'AuroraOS_Overview.pptx', sub: 'Microsoft PowerPoint • Deck', icon: ICONS.ppt, open: openPowerPoint },
+      { title: 'AuroraOS_Paint.png', sub: 'Microsoft Paint • Canvas', icon: ICONS.paint, open: openPaint }
     ].filter((it) => !q || it.title.toLowerCase().includes(q) || it.sub.toLowerCase().includes(q));
 
     smRec.innerHTML = recItems.map((it, idx) => `
@@ -1603,7 +2557,6 @@ Type 'help' for available commands.
 
   smSearch.addEventListener('input', () => renderStartMenuContent(smSearch.value));
 
-  // Lock Screen & Close All Actions
   startMenu.querySelector('#w11-btn-lock').addEventListener('click', () => {
     toggleStartMenu(false);
     const lock = document.createElement('div');
@@ -1652,7 +2605,7 @@ Type 'help' for available commands.
       <button type="button" class="w11-tb-search-pill" id="w11-search-btn" title="Search">&#128269; <span>Search</span></button>
     </div>
     <div class="w11-tb-center" id="w11-tb-apps">
-      ${APPS.slice(0, 6).map((a) => `
+      ${APPS.slice(0, 7).map((a) => `
         <button type="button" class="w11-tb-btn" data-tb-app="${a.id}" title="${escHtml(a.label)}">${a.icon}</button>
       `).join('')}
     </div>
@@ -1721,9 +2674,11 @@ Type 'help' for available commands.
     if (!e.target.closest('#w11-quick-settings, #w11-tray-btn')) {
       quickPanel.style.display = 'none';
     }
+    if (!e.target.closest('.w11-snap-menu, [data-act="snap"]')) {
+      document.querySelectorAll('.w11-snap-menu').forEach((m) => { m.style.display = 'none'; });
+    }
   });
 
-  // Live Taskbar Clock
   function updateClock() {
     const now = new Date();
     const tEl = document.getElementById('w11-clock-time');
@@ -1739,6 +2694,8 @@ Type 'help' for available commands.
     openWord,
     openExcel,
     openPowerPoint,
+    openPaint,
+    openCodeStudio,
     openExplorer,
     openTerminal,
     openCalculator,
