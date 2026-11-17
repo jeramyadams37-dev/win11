@@ -449,7 +449,7 @@
     if (!document.getElementById('aurora-v2-dock')) {
       const dock = document.createElement('div');
       dock.id = 'aurora-v2-dock';
-      dock.style.cssText = 'position:fixed;bottom:52px;left:50%;transform:translateX(-50%);z-index:2147483640;display:flex;align-items:center;gap:6px;padding:5px 10px;background:rgba(15,18,28,0.88);border:1px solid rgba(255,255,255,0.22);border-radius:999px;box-shadow:0 10px 28px rgba(0,0,0,0.55);backdrop-filter:blur(14px);max-width:96vw;flex-wrap:wrap;justify-content:center;';
+      dock.style.cssText = 'position:fixed;bottom:52px;left:50%;transform:translateX(-50%);z-index:2147483640;display:flex;align-items:center;gap:6px;padding:5px 10px;background:rgba(15,18,28,0.88);border:1px solid rgba(255,255,255,0.22);border-radius:16px;box-shadow:0 10px 28px rgba(0,0,0,0.55);backdrop-filter:blur(14px);max-width:96vw;flex-wrap:wrap;justify-content:center;';
       NEW_APPS.forEach(app => {
         const btn = document.createElement('button');
         btn.title = app.name;
