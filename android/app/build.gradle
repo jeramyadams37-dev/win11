@@ -7,8 +7,9 @@ android {
         applicationId "com.jeramy.win11"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (System.getenv("BUILD_NUMBER") ?: "1").toInteger()
-        versionName "1.0." + (System.getenv("BUILD_NUMBER") ?: "0")
+        def ciBuildNum = (System.getenv("BUILD_NUMBER") ?: "").trim()
+        versionCode = ciBuildNum ? ciBuildNum.toInteger() : 1
+        versionName = "1.0." + (ciBuildNum ?: "0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -19,9 +20,6 @@ android {
     signingConfigs {
         release {
             if (System.getenv("KEYSTORE_PATH") != null) {
-                signingConfig signingConfigs.release
-            }
-            if (System.getenv("KEYSTORE_PATH") != null) {
                 storeFile file(System.getenv("KEYSTORE_PATH"))
                 storePassword System.getenv("KEYSTORE_PASSWORD")
                 keyAlias System.getenv("KEY_ALIAS")
@@ -31,6 +29,9 @@ android {
     }
     buildTypes {
         release {
+            if (System.getenv("KEYSTORE_PATH") != null) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
