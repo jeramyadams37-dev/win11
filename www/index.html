@@ -107,7 +107,7 @@ const APPS = {
   explorer: { title: "File Explorer", icon: "🗂️", w: 800, h: 500, content: () => `<div class="fe-body"><div class="fe-sidebar">🏠 Home<br>📄 Docs</div><div style="padding:20px;">${Drive.load('np_text') ? '📝 AutoSave_Backup.txt' : 'No files found.'}</div></div>` },
   notepad: { title: "Notepad", icon: "📝", w: 600, h: 450, content: () => `<textarea class="notepad-area" oninput="Drive.save('np_text', this.value)" placeholder="Start typing...">${Drive.load('np_text') || ''}</textarea>` },
   calc: { title: "Calculator", icon: "🧮", w: 320, h: 480, content: () => `<div class="calc-grid">${['C','/','*','-','7','8','9','+','4','5','6','=','1','2','3','0'].map(b => `<button class="calc-btn">${b}</button>`).join('')}</div>` },
-  settings: { title: "Settings", icon: "⚙️", w: 700, h: 500, content: () => `<div style="padding:30px;"><h2>System</h2><p>Device: Moto G 5G</p><p>OS: AuroraOS v8.5</p><p>Developer: Jerany Adams</p></div>` }
+  settings: { title: "Settings", icon: "⚙️", w: 700, h: 500, content: () => `<div style="padding:30px;"><h2>System</h2><p>Device: Moto G 5G</p><p>OS: AuroraOS v8.5</p><p>Developer: Jeramy Adams</p></div>` }
 };
 
 let windows = {};
