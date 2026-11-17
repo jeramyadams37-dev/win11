@@ -27,6 +27,29 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Setup Gradle & Cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Configure Maven Central Mirror
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/mirrors.gradle << 'GRADLE'
+          allprojects {
+            buildscript {
+              repositories {
+                maven { url "https://maven-central.storage-download.googleapis.com/maven2/" }
+                google()
+                mavenCentral()
+              }
+            }
+            repositories {
+              maven { url "https://maven-central.storage-download.googleapis.com/maven2/" }
+              google()
+              mavenCentral()
+            }
+          }
+          GRADLE
+
       - name: Install Dependencies & Sync Capacitor
         run: |
           npm install
@@ -46,7 +69,11 @@ jobs:
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleRelease
+          for attempt in 1 2 3; do
+            ./gradlew assembleRelease --max-workers=2 && break
+            echo "Gradle attempt $attempt failed, retrying in 15s..."
+            sleep 15
+          done
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
