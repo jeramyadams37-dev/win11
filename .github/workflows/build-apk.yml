@@ -25,30 +25,40 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
 
       - name: Install Dependencies & Sync Capacitor
         run: |
           npm install
           npx cap sync android
 
-      - name: Build Debug APK
+      - name: Decode Release Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/aurora-win11.keystore
+
+      - name: Build Signed Release APK
+        env:
+          KEYSTORE_PATH: /tmp/aurora-win11.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          BUILD_NUMBER: ${{ github.run_number }}
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: win11-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: win11-signed-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
 
-      - name: Publish APK to Releases
+      - name: Publish Signed APK to Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: Win11 Build ${{ github.run_number }}
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
