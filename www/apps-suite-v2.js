@@ -470,7 +470,7 @@
   setInterval(mountSuiteUI, 2000);
 })();
 
-/* === AURORAOS QUICK MENU DRAG/MINIMIZE & F1 GUIDANCE KEY === */
+/* === AURORAOS MOVABLE/MINIMIZABLE QUICK MENU & F1 GUIDANCE KEY === */
 (function() {
   if (window.__auroraQuickFix) return;
   window.__auroraQuickFix = true;
@@ -479,7 +479,7 @@
   style.textContent = `
     .aurora-drag-bar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 4px 10px; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.15);
+      padding: 4px 10px; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.16);
       cursor: grab; touch-action: none; user-select: none; font-size: 11px; color: #cbd5e1;
     }
     .aurora-drag-bar:active { cursor: grabbing; }
@@ -574,9 +574,9 @@
       <div style="margin-bottom:8px;">
         <span class="aurora-f1-chip" data-cmd="commands">commands</span>
         <span class="aurora-f1-chip" data-cmd="latest gh builds">latest gh builds</span>
-        <span class="aurora-f1-chip" data-cmd="gh status">gh status</span>
+        <span class="aurora-f1-chip" data-cmd="trips">trips</span>
+        <span class="aurora-f1-chip" data-cmd="dtc">dtc</span>
         <span class="aurora-f1-chip" data-cmd="status">status</span>
-        <span class="aurora-f1-chip" data-cmd="modules">modules</span>
       </div>
       <pre id="aurora-f1-out" style="background:rgba(0,0,0,0.6); padding:10px; border-radius:6px; font-size:12px; white-space:pre-wrap; margin:0;">Tap a command above to query Cortex (:8420)...</pre>
     `;

@@ -13,12 +13,13 @@
       --taskbar-height: 48px; --hover: rgba(255, 255, 255, 0.1);
     }
     * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-    body {
+    body { 
       margin: 0; padding: 0; height: 100vh; overflow: hidden;
       font-family: 'Segoe UI Variable', system-ui, sans-serif;
       background: url('https://w.wallhaven.cc/full/y8/wallhaven-y8pw9k.jpg') center/cover;
       color: var(--text-main); user-select: none;
     }
+    
     /* TASKBAR */
     #taskbar {
       position: fixed; bottom: 0; width: 100%; height: var(--taskbar-height);
@@ -27,14 +28,14 @@
       padding: 0 12px; z-index: 10000; border-top: 1px solid var(--glass-border);
     }
     .taskbar-center { display: flex; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
-    .tb-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 22px; position: relative; }
+    .tb-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 22px; }
     .tb-btn:hover { background: var(--hover); }
     .tb-btn.active::after { content: ''; position: absolute; bottom: 4px; width: 6px; height: 3px; background: var(--accent); border-radius: 2px; }
 
     /* START MENU */
     #start-menu {
       position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%) translateY(20px);
-      width: 680px; height: 600px; background: var(--glass-bg); backdrop-filter: blur(60px) saturate(200%);
+      width: 640px; height: 600px; background: var(--glass-bg); backdrop-filter: blur(60px) saturate(200%);
       border: 1px solid var(--glass-border); border-radius: 12px; z-index: 9500;
       display: none; opacity: 0; transition: all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
       padding: 30px; box-shadow: 0 24px 64px rgba(0,0,0,0.8);
@@ -64,16 +65,16 @@
     .calc-btn { background: rgba(255,255,255,0.05); border: none; color: white; font-size: 18px; cursor: pointer; border-radius: 4px; }
     .calc-btn:hover { background: rgba(255,255,255,0.1); }
   </style>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
 
 <div id="desktop"></div>
 
 <div id="start-menu">
-  <div style="margin-bottom:20px; font-size: 14px; font-weight: 600;">AuroraOS Core & Modules</div>
-  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
-    <div onclick="openApp('edgerider')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🚗</div><div style="font-size:11px;">EdgeRider</div></div>
-    <div onclick="openApp('shopsense')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🔧</div><div style="font-size:11px;">ShopSense</div></div>
+  <div style="margin-bottom:20px; font-size: 14px; font-weight: 600;">Pinned Apps</div>
+  <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px;">
     <div onclick="openApp('explorer')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🗂️</div><div style="font-size:11px;">Files</div></div>
     <div onclick="openApp('notepad')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">📝</div><div style="font-size:11px;">Notepad</div></div>
     <div onclick="openApp('calc')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🧮</div><div style="font-size:11px;">Calc</div></div>
@@ -94,161 +95,91 @@
 </div>
 
 <script>
-  // --- Persistence Logic ---
-  const Drive = {
-    save: (k, v) => localStorage.setItem('aurora_v8_'+k, JSON.stringify(v)),
-    load: (k) => {
-      const val = localStorage.getItem('aurora_v8_'+k);
-      try { return JSON.parse(val); } catch { return val; }
-    }
-  };
+// --- Persistence Logic ---
+const Drive = {
+  save: (k, v) => localStorage.setItem('aurora_v8_'+k, JSON.stringify(v)),
+  load: (k) => { 
+    const val = localStorage.getItem('aurora_v8_'+k);
+    try { return JSON.parse(val); } catch { return val; }
+  }
+};
 
-  // --- App Registry ---
-  const APPS = {
-    edgerider: {
-      title: "EdgeRider Telemetry",
-      icon: "🚗",
-      w: 720,
-      h: 480,
-      content: () => `<div style="padding:20px;">
-        <h3>EdgeRider Gig Route & Profitability</h3>
-        <p style="color:rgba(255,255,255,0.7); font-size:12px;">Connected to Flask Bridge (:8420) → edgerider.db</p>
-        <div style="margin-bottom:15px; display:flex; gap:10px;">
-          <input id="er-platform" type="text" value="Walmart Spark" style="padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:4px;" />
-          <input id="er-miles" type="number" placeholder="Miles" value="12.0" style="width:80px; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:4px;" />
-          <input id="er-earn" type="number" placeholder="Earnings ($)" value="28.00" style="width:100px; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:4px;" />
-          <button onclick="logEdgeTrip()" style="padding:6px 14px; background:var(--accent); color:white; border:none; border-radius:4px; cursor:pointer;">Log Trip</button>
-        </div>
-        <div id="er-output" style="background:rgba(0,0,0,0.4); padding:10px; border-radius:6px; font-family:monospace; font-size:12px; height:260px; overflow-y:auto;">Click 'Fetch Trips' below to load history.</div>
-        <button onclick="fetchEdgeTrips()" style="margin-top:10px; padding:6px 12px; background:rgba(255,255,255,0.1); color:white; border:none; border-radius:4px; cursor:pointer;">Fetch Recent Trips</button>
-      </div>`
-    },
-    shopsense: {
-      title: "ShopSense OBD-II",
-      icon: "🔧",
-      w: 700,
-      h: 450,
-      content: () => `<div style="padding:20px;">
-        <h3>ShopSense Diagnostic Inspector</h3>
-        <p style="color:rgba(255,255,255,0.7); font-size:12px;">Connected to Flask Bridge (:8420) → shopsense.db</p>
-        <button onclick="fetchShopCodes()" style="padding:8px 14px; background:var(--accent); color:white; border:none; border-radius:4px; cursor:pointer;">Load DTC Fault Database</button>
-        <div id="ss-output" style="margin-top:15px; background:rgba(0,0,0,0.4); padding:10px; border-radius:6px; font-family:monospace; font-size:12px; height:260px; overflow-y:auto;">No DTC codes queried yet.</div>
-      </div>`
-    },
-    explorer: { title: "File Explorer", icon: "🗂️", w: 800, h: 500, content: () => `<div class="fe-body"><div class="fe-sidebar">🏠 Home<br>📄 Docs</div><div style="padding:20px;">${Drive.load('np_text') ? '📝 AutoSave_Backup.txt' : 'No files found.'}</div></div>` },
-    notepad: { title: "Notepad", icon: "📝", w: 600, h: 450, content: () => `<textarea class="notepad-area" oninput="Drive.save('np_text', this.value)" placeholder="Start typing...">${Drive.load('np_text') || ''}</textarea>` },
-    calc: { title: "Calculator", icon: "🧮", w: 320, h: 480, content: () => `<div class="calc-grid">${['C','/','*','-','7','8','9','+','4','5','6','=','1','2','3','0'].map(b => `<button class="calc-btn">${b}</button>`).join('')}</div>` },
-    settings: { title: "Settings", icon: "⚙️", w: 700, h: 500, content: () => `<div style="padding:30px;"><h2>System</h2><p>Device: Moto G (2025)</p><p>OS: AuroraOS v8.5</p><p>Developer: Jeramy Adams</p></div>` }
-  };
+// --- App Registry ---
+const APPS = {
+  explorer: { title: "File Explorer", icon: "🗂️", w: 800, h: 500, content: () => `<div class="fe-body"><div class="fe-sidebar">🏠 Home<br>📄 Docs</div><div style="padding:20px;">${Drive.load('np_text') ? '📝 AutoSave_Backup.txt' : 'No files found.'}</div></div>` },
+  notepad: { title: "Notepad", icon: "📝", w: 600, h: 450, content: () => `<textarea class="notepad-area" oninput="Drive.save('np_text', this.value)" placeholder="Start typing...">${Drive.load('np_text') || ''}</textarea>` },
+  calc: { title: "Calculator", icon: "🧮", w: 320, h: 480, content: () => `<div class="calc-grid">${['C','/','*','-','7','8','9','+','4','5','6','=','1','2','3','0'].map(b => `<button class="calc-btn">${b}</button>`).join('')}</div>` },
+  settings: { title: "Settings", icon: "⚙️", w: 700, h: 500, content: () => `<div style="padding:30px;"><h2>System</h2><p>Device: Moto G 5G</p><p>OS: AuroraOS v8.5</p><p>Developer: Jeramy Adams</p></div>` }
+};
 
-  let windows = {};
-  let zIdx = 1000;
+let windows = {};
+let zIdx = 1000;
 
-  function toggleStart() { document.getElementById('start-menu').classList.toggle('visible'); }
+function toggleStart() { document.getElementById('start-menu').classList.toggle('visible'); }
 
-  function openApp(id) {
-    document.getElementById('start-menu').classList.remove('visible');
-    if (windows[id]) return focusWin(id);
-    const app = APPS[id];
-    const win = document.createElement('div');
-    win.className = 'window focused';
-    win.id = 'win-' + id;
-    win.style.width = app.w + 'px'; win.style.height = app.h + 'px';
-    win.style.left = '100px'; win.style.top = '100px';
-    win.style.zIndex = ++zIdx;
+function openApp(id) {
+  document.getElementById('start-menu').classList.remove('visible');
+  if (windows[id]) return focusWin(id);
 
-    win.innerHTML = `
-      <div class="titlebar" onmousedown="focusWin('${id}')">
-        <span style="margin-right:8px">${app.icon}</span>
-        <span class="title-text">${app.title}</span>
-        <div class="win-controls">
-          <div class="win-btn close-btn" onclick="closeApp('${id}')">✕</div>
-        </div>
+  const app = APPS[id];
+  const win = document.createElement('div');
+  win.className = 'window focused';
+  win.id = 'win-' + id;
+  win.style.width = app.w + 'px'; win.style.height = app.h + 'px';
+  win.style.left = '100px'; win.style.top = '100px';
+  win.style.zIndex = ++zIdx;
+
+  win.innerHTML = `
+    <div class="titlebar" onmousedown="focusWin('${id}')">
+      <span style="margin-right:8px">${app.icon}</span>
+      <span class="title-text">${app.title}</span>
+      <div class="win-controls">
+        <div class="win-btn" onclick="closeApp('${id}')">✕</div>
       </div>
-      <div class="content">${app.content()}</div>
-    `;
-    document.getElementById('desktop').appendChild(win);
-    windows[id] = true;
-    makeDraggable(win);
-    updateTaskbar();
-  }
+    </div>
+    <div class="content">${app.content()}</div>
+  `;
 
-  function closeApp(id) { document.getElementById('win-'+id).remove(); delete windows[id]; updateTaskbar(); }
-  function focusWin(id) { document.querySelectorAll('.window').forEach(w => w.classList.remove('focused')); const w = document.getElementById('win-'+id); w.classList.add('focused'); w.style.zIndex = ++zIdx; }
-  
-  function updateTaskbar() {
-    const bar = document.getElementById('tb-active'); bar.innerHTML = '';
-    Object.keys(windows).forEach(id => {
-      bar.innerHTML += `<div class="tb-btn active" onclick="focusWin('${id}')">${APPS[id].icon}</div>`;
-    });
-  }
+  document.getElementById('desktop').appendChild(win);
+  windows[id] = true;
+  makeDraggable(win);
+  updateTaskbar();
+}
 
-  function makeDraggable(el) {
-    let ox = 0, oy = 0, nx = 0, ny = 0;
-    const tb = el.querySelector('.titlebar');
-    tb.onmousedown = (e) => {
-      e.preventDefault(); ox = e.clientX; oy = e.clientY;
-      document.onmousemove = (e) => {
-        nx = ox - e.clientX; ny = oy - e.clientY; ox = e.clientX; oy = e.clientY;
-        el.style.top = (el.offsetTop - ny) + "px"; el.style.left = (el.offsetLeft - nx) + "px";
-      };
-      document.onmouseup = () => { document.onmousemove = null; document.onmouseup = null; };
+function closeApp(id) { document.getElementById('win-'+id).remove(); delete windows[id]; updateTaskbar(); }
+function focusWin(id) { document.querySelectorAll('.window').forEach(w => w.classList.remove('focused')); const w = document.getElementById('win-'+id); w.classList.add('focused'); w.style.zIndex = ++zIdx; }
+
+function updateTaskbar() {
+  const bar = document.getElementById('tb-active'); bar.innerHTML = '';
+  Object.keys(windows).forEach(id => {
+    bar.innerHTML += `<div class="tb-btn active" onclick="focusWin('${id}')">${APPS[id].icon}</div>`;
+  });
+}
+
+function makeDraggable(el) {
+  let ox = 0, oy = 0, nx = 0, ny = 0;
+  const tb = el.querySelector('.titlebar');
+  tb.onmousedown = (e) => {
+    e.preventDefault(); ox = e.clientX; oy = e.clientY;
+    document.onmousemove = (e) => {
+      nx = ox - e.clientX; ny = oy - e.clientY; ox = e.clientX; oy = e.clientY;
+      el.style.top = (el.offsetTop - ny) + "px"; el.style.left = (el.offsetLeft - nx) + "px";
     };
-  }
+    document.onmouseup = () => { document.onmousemove = null; document.onmouseup = null; };
+  };
+}
 
-  // API Integration Helpers
-  function fetchEdgeTrips() {
-    fetch('http://127.0.0.1:8420/api/edgerider/trips')
-      .then(res => res.json())
-      .then(data => {
-        const out = document.getElementById('er-output');
-        if (data.trips && data.trips.length > 0) {
-          out.innerHTML = data.trips.map(t => `[#${t.id}] ${t.timestamp} | ${t.platform} | Miles: ${t.miles} | Earned: $${t.earnings.toFixed(2)} | Net: $${t.net.toFixed(2)}`).join('<br>');
-        } else {
-          out.innerHTML = "No trips recorded yet.";
-        }
-      }).catch(err => {
-        document.getElementById('er-output').innerHTML = "⚠️ Flask bridge offline on port 8420. Run aurora_cortex_bridge.py";
-      });
-  }
-
-  function logEdgeTrip() {
-    const platform = document.getElementById('er-platform').value;
-    const miles = parseFloat(document.getElementById('er-miles').value);
-    const earnings = parseFloat(document.getElementById('er-earn').value);
-    fetch('http://127.0.0.1:8420/api/edgerider/trips', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({platform, miles, earnings})
-    }).then(res => res.json()).then(data => {
-      if (data.success) {
-        alert("Trip logged successfully! Net: $" + data.net.toFixed(2));
-        fetchEdgeTrips();
-      }
-    }).catch(err => alert("Failed to log trip. Is port 8420 running?"));
-  }
-
-  function fetchShopCodes() {
-    fetch('http://127.0.0.1:8420/api/shopsense/dtc')
-      .then(res => res.json())
-      .then(data => {
-        const out = document.getElementById('ss-output');
-        if (data.dtc_codes && data.dtc_codes.length > 0) {
-          out.innerHTML = data.dtc_codes.map(c => `<b>${c.code}</b>: ${c.desc}<br><i>Fix: ${c.fix}</i><hr style="border-color:rgba(255,255,255,0.1)">`).join('');
-        } else {
-          out.innerHTML = "ShopSense database is empty.";
-        }
-      }).catch(err => {
-        document.getElementById('ss-output').innerHTML = "⚠️ Flask bridge offline on port 8420.";
-      });
-  }
-
-  function updateClock() {
-    const now = new Date();
-    document.getElementById('clock-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    document.getElementById('clock-date').innerText = now.toLocaleDateString();
-  }
-  setInterval(updateClock, 1000); updateClock();
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  document.getElementById('clock-date').innerText = now.toLocaleDateString();
+}
+setInterval(updateClock, 1000); updateClock();
 </script>
+<script src="wallpaper.js"></script>
+<script src="apps-office.js"></script>
+  <script src="./apps-suite-v2.js"></script>
+  <script src="./os-functions-v2.js"></script>
+  <script src="./ms-auth-v2.js"></script>
 </body>
 </html>
