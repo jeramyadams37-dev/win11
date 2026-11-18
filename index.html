@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AuroraOS - Windows 11 Web Edition</title>
+  
+  <!-- Local Offline JSZip Bundle for Word .docx exports -->
+  <script src="./js/jszip.min.js"></script>
+
   <style>
     :root { --accent: #0078d4; --glass-bg: rgba(32, 32, 32, 0.75); --glass-border: rgba(255, 255, 255, 0.08); --text-main: #ffffff; }
     * { box-sizing: border-box; }
@@ -12,6 +16,7 @@
     .taskbar-center { display: flex; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
     .tb-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 6px; cursor: pointer; font-size: 22px; }
     .tb-btn:hover { background: rgba(255, 255, 255, 0.1); }
+    #hive-status-pill { display: flex; align-items: center; gap: 6px; font-size: 11px; background: rgba(0, 120, 212, 0.2); border: 1px solid rgba(0, 120, 212, 0.4); padding: 4px 10px; border-radius: 12px; cursor: pointer; }
     #start-menu { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%) translateY(20px); width: 680px; height: 500px; background: var(--glass-bg); backdrop-filter: blur(60px); border: 1px solid var(--glass-border); border-radius: 12px; z-index: 9500; display: none; padding: 30px; box-shadow: 0 24px 64px rgba(0,0,0,0.8); }
     #start-menu.visible { display: block; transform: translateX(-50%) translateY(0); }
     .window { position: absolute; background: var(--glass-bg); backdrop-filter: blur(40px); border: 1px solid var(--glass-border); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; }
@@ -25,21 +30,34 @@
 </head>
 <body>
 <div id="desktop"></div>
+
 <div id="start-menu">
   <div style="margin-bottom:20px; font-weight: 600;">AuroraOS Modules</div>
   <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
     <div onclick="openApp('edgerider')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🚗</div><div style="font-size:11px;">EdgeRider</div></div>
     <div onclick="openApp('shopsense')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🔧</div><div style="font-size:11px;">ShopSense</div></div>
+    <div onclick="openApp('wordapp')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">📄</div><div style="font-size:11px;">Microsoft Word</div></div>
+    <div onclick="openApp('hivecomms')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🐝</div><div style="font-size:11px;">Hive Comms</div></div>
   </div>
 </div>
+
 <div id="taskbar">
-  <div class="taskbar-center"><div class="tb-btn" onclick="toggleStart()">💠</div></div>
+  <div class="tb-btn" onclick="toggleStart()">💠</div>
+  <div class="taskbar-center"></div>
+  <div id="hive-status-pill" onclick="openApp('hivecomms')">
+    <span id="hive-dot" style="width:8px; height:8px; background:#107c10; border-radius:50%;"></span>
+    <span id="hive-label">Buzz v1.0 Active</span>
+  </div>
 </div>
+
 <script>
   const APPS = {
     edgerider: { title: "EdgeRider Telemetry", icon: "🚗", w: 720, h: 480, content: () => `<div style="padding:20px;"><h3>EdgeRider Gig Telemetry</h3><button onclick="fetchEdgeTrips()" style="padding:6px 14px; background:#0078d4; color:white; border:none; border-radius:4px;">Fetch Trips</button><div id="er-output" style="margin-top:10px; font-family:monospace; font-size:12px;">Click fetch to load data.</div></div>` },
-    shopsense: { title: "ShopSense OBD-II", icon: "🔧", w: 700, h: 450, content: () => `<div style="padding:20px;"><h3>ShopSense DTC Codes</h3><button onclick="fetchShopCodes()" style="padding:6px 14px; background:#0078d4; color:white; border:none; border-radius:4px;">Load Codes</button><div id="ss-output" style="margin-top:10px; font-family:monospace; font-size:12px;">Click load to inspect DTCs.</div></div>` }
+    shopsense: { title: "ShopSense OBD-II", icon: "🔧", w: 700, h: 450, content: () => `<div style="padding:20px;"><h3>ShopSense DTC Codes</h3><button onclick="fetchShopCodes()" style="padding:6px 14px; background:#0078d4; color:white; border:none; border-radius:4px;">Load Codes</button><div id="ss-output" style="margin-top:10px; font-family:monospace; font-size:12px;">Click load to inspect DTCs.</div></div>` },
+    wordapp: { title: "Microsoft Word - angellist.docx", icon: "📄", w: 750, h: 520, content: () => `<div style="padding:20px; display:flex; flex-direction:column; height:100%;"><div style="margin-bottom:10px; display:flex; gap:10px;"><button onclick="exportWordDocument('angellist.docx')" style="padding:6px 14px; background:#107c10; color:white; border:none; border-radius:4px; cursor:pointer;">Export .docx</button></div><textarea id="word-editor" style="flex:1; width:100%; background:#1e1e1e; color:white; border:1px solid #444; padding:12px; font-family:monospace; font-size:13px; border-radius:4px; resize:none;">angellist\n\n<!DOCTYPE html><html class="notranslate" lang="en" translate="no"><head><meta charset="utf-8">...</textarea></div>` },
+    hivecomms: { title: "Hive Comms Buzz", icon: "🐝", w: 650, h: 400, content: () => `<div style="padding:20px;"><h3>AuroraOS Hive Comms</h3><div style="margin-bottom:10px;"><input id="hive-msg-input" type="text" placeholder="Broadcast swarm message..." style="width:70%; padding:6px; background:#222; border:1px solid #444; color:white; border-radius:4px;"/><button onclick="sendHiveBuzz()" style="padding:6px 14px; background:#107c10; color:white; border:none; border-radius:4px; margin-left:8px;">Broadcast</button></div><div id="hive-feed" style="background:#181818; border:1px solid #333; padding:10px; height:240px; overflow-y:auto; font-family:monospace; font-size:11px;">Listening for mesh nodes...</div></div>` }
   };
+
   let windows = {}, zIdx = 1000;
   function toggleStart() { document.getElementById('start-menu').classList.toggle('visible'); }
   function openApp(id) {
@@ -47,12 +65,14 @@
     if (windows[id]) return;
     const app = APPS[id], win = document.createElement('div');
     win.className = 'window focused'; win.id = 'win-' + id;
-    win.style.width = app.w + 'px'; win.style.height = app.h + 'px'; win.style.left = '100px'; win.style.top = '100px'; win.style.zIndex = ++zIdx;
+    win.style.width = app.w + 'px'; win.style.height = app.h + 'px'; win.style.left = '120px'; win.style.top = '100px'; win.style.zIndex = ++zIdx;
     win.innerHTML = '<div class="titlebar"><span>' + app.icon + '</span><span class="title-text">' + app.title + '</span><div class="win-btn close-btn" onclick="closeApp(\x27' + id + '\x27)">✕</div></div><div class="content">' + app.content() + '</div>';
     document.getElementById('desktop').appendChild(win);
     windows[id] = true;
   }
   function closeApp(id) { document.getElementById('win-'+id).remove(); delete windows[id]; }
+
+  // Telemetry Fetchers
   function fetchEdgeTrips() {
     fetch('http://127.0.0.1:8420/api/edgerider/trips').then(r => r.json()).then(d => {
       document.getElementById('er-output').innerHTML = JSON.stringify(d.trips, null, 2);
@@ -62,6 +82,40 @@
     fetch('http://127.0.0.1:8420/api/shopsense/dtc').then(r => r.json()).then(d => {
       document.getElementById('ss-output').innerHTML = JSON.stringify(d.dtc_codes, null, 2);
     }).catch(e => alert('Bridge offline on port 8420'));
+  }
+
+  // Offline Word .docx Generator using local JSZip
+  function exportWordDocument(filename = "angellist.docx") {
+    if (typeof JSZip === 'undefined') {
+      alert("Export error: JSZip offline bundle not loaded");
+      return;
+    }
+
+    const editor = document.getElementById('word-editor');
+    const text = editor ? editor.value : "AuroraOS Document Export";
+    const paragraphs = text.split('\n').map(line => `<w:p><w:r><w:t>${escapeXml(line)}</w:t></w:r></w:p>`).join('');
+
+    const zip = new JSZip();
+    zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+    zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+    zip.file("word/document.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraphs}<w:sectPr/></w:body></w:document>`);
+
+    zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      })
+      .catch(err => alert("Export generation failed: " + err));
+  }
+
+  function escapeXml(str) {
+    return str.replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '\'': '&apos;', '"': '&quot;' }[c]));
   }
 </script>
 <script src="hive_comms.js"></script>
