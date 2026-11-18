@@ -470,21 +470,23 @@
   setInterval(mountSuiteUI, 2000);
 })();
 
-/* === AURORAOS MOVABLE/MINIMIZABLE QUICK MENU & F1 GUIDANCE KEY === */
+
+/* === AURORAOS MOVABLE/MINIMIZABLE QUICK MENU, AUTO-MIN & F1 KEY === */
 (function() {
-  if (window.__auroraQuickFix) return;
-  window.__auroraQuickFix = true;
+  if (window.__auroraQuickFixV2) return;
+  window.__auroraQuickFixV2 = true;
 
   const style = document.createElement('style');
   style.textContent = `
     .aurora-drag-bar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 4px 10px; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.16);
+      padding: 5px 10px; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.18);
       cursor: grab; touch-action: none; user-select: none; font-size: 11px; color: #cbd5e1;
+      width: 100%; box-sizing: border-box;
     }
     .aurora-drag-bar:active { cursor: grabbing; }
     .aurora-min-btn {
-      background: rgba(255,255,255,0.16); border: none; color: #fff;
+      background: rgba(255,255,255,0.18); border: none; color: #fff;
       border-radius: 4px; padding: 2px 8px; font-size: 12px; cursor: pointer;
     }
     .aurora-menu-minimized > *:not(.aurora-drag-bar) { display: none !important; }
@@ -508,7 +510,7 @@
 
   function attachMenuControls() {
     const btn = Array.from(document.querySelectorAll('button, div, span')).find(
-      el => el.textContent && el.textContent.trim() === 'Camera Studio'
+      el => el.children.length === 0 && el.textContent && el.textContent.includes('Camera Studio')
     );
     if (!btn) return;
     let menu = btn.parentElement;
@@ -573,9 +575,9 @@
       </div>
       <div style="margin-bottom:8px;">
         <span class="aurora-f1-chip" data-cmd="commands">commands</span>
-        <span class="aurora-f1-chip" data-cmd="latest gh builds">latest gh builds</span>
         <span class="aurora-f1-chip" data-cmd="trips">trips</span>
         <span class="aurora-f1-chip" data-cmd="dtc">dtc</span>
+        <span class="aurora-f1-chip" data-cmd="latest gh builds">latest gh builds</span>
         <span class="aurora-f1-chip" data-cmd="status">status</span>
       </div>
       <pre id="aurora-f1-out" style="background:rgba(0,0,0,0.6); padding:10px; border-radius:6px; font-size:12px; white-space:pre-wrap; margin:0;">Tap a command above to query Cortex (:8420)...</pre>
@@ -593,7 +595,7 @@
         const d = await r.json();
         out.textContent = d.response || JSON.stringify(d, null, 2);
       } catch (e) {
-        out.textContent = 'Bridge offline on :8420. Start with: python3 ~/aurora_cortex_bridge.py &';
+        out.textContent = 'Bridge offline on :8420.';
       }
     };
 
@@ -602,26 +604,8 @@
     window.toggleAuroraGuide = () => { modal.classList.toggle('open'); if (modal.classList.contains('open')) run('commands'); };
   }
 
-  const obs = new MutationObserver(() => attachMenuControls());
-  window.addEventListener('DOMContentLoaded', () => {
-    attachMenuControls();
-    setupGuidanceModal();
-    obs.observe(document.body, { childList: true, subtree: true });
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'F1' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
-      e.preventDefault();
-      if (window.toggleAuroraGuide) window.toggleAuroraGuide();
-    }
-  });
-})();
-
-/* === AUTO-MINIMIZE QUICK MENU ON OUTSIDE TAP === */
-(function() {
-  if (window.__auroraAutoMinBound) return;
-  window.__auroraAutoMinBound = true;
-
-  const autoMinimize = (e) => {
+  // Auto-minimize when tapping anywhere outside the Quick Menu
+  document.addEventListener('pointerdown', (e) => {
     const menu = document.querySelector('[data-movable-ready="1"]');
     if (!menu || menu.classList.contains('aurora-menu-minimized')) return;
     if (menu.contains(e.target)) return;
@@ -629,7 +613,21 @@
     menu.classList.add('aurora-menu-minimized');
     const minBtn = menu.querySelector('.aurora-min-btn');
     if (minBtn) minBtn.textContent = '▲';
-  };
+  }, true);
 
-  document.addEventListener('pointerdown', autoMinimize, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'F1' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
+      e.preventDefault();
+      if (window.toggleAuroraGuide) window.toggleAuroraGuide();
+    }
+  });
+
+  function boot() {
+    attachMenuControls();
+    setupGuidanceModal();
+    new MutationObserver(attachMenuControls).observe(document.body, { childList: true, subtree: true });
+    setInterval(attachMenuControls, 1200);
+  }
+  if (document.body) boot();
+  else window.addEventListener('DOMContentLoaded', boot);
 })();
