@@ -115,7 +115,32 @@
     });
   }
 
-  function tick() { addDesk(); addBar(); }
+  function addSearch() {
+    var m = document.getElementById('aurora-f1-modal');
+    var out = document.getElementById('aurora-f1-out');
+    if (!m || !out || m.querySelector('.aq-search')) return;
+    var SR = 'http://127.0.0.1:8421';
+    var box = document.createElement('div');
+    box.className = 'aq-search';
+    box.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;';
+    box.innerHTML = '<select class="aq-db" style="padding:6px;border-radius:6px;background:#0f172a;color:#fff;border:1px solid #334155"><option value="docs">Docs</option><option value="cameras">Cameras</option></select>' +
+      '<input class="aq-q" type="search" placeholder="Search your data..." style="flex:1;min-width:120px;padding:6px 8px;font-size:16px;border-radius:6px;background:#0f172a;color:#fff;border:1px solid #334155">' +
+      '<button type="button" class="aq-go" style="padding:6px 12px;border:0;border-radius:6px;background:#0078d4;color:#fff">Search</button>' +
+      '<button type="button" class="aq-all" style="padding:6px 12px;border:0;border-radius:6px;background:#475569;color:#fff">All commands</button>';
+    out.parentNode.insertBefore(box, out);
+    function show(url) {
+      out.textContent = 'Loading...';
+      fetch(url).then(function (r) { return r.json(); })
+        .then(function (j) { out.textContent = j.text || JSON.stringify(j, null, 2); })
+        .catch(function (e) { out.textContent = 'Search server not running on :8421. Type aqsearch in Termux.\n' + e; });
+    }
+    function go() { show(SR + '/api/search?db=' + box.querySelector('.aq-db').value + '&q=' + encodeURIComponent(box.querySelector('.aq-q').value)); }
+    box.querySelector('.aq-go').onclick = go;
+    box.querySelector('.aq-q').addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    box.querySelector('.aq-all').onclick = function () { show(SR + '/api/commands'); };
+  }
+
+  function tick() { addDesk(); addBar(); addSearch(); }
   tick();
   setInterval(tick, 1000);
 })();
