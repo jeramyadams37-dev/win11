@@ -2450,7 +2450,10 @@ Type 'help' for available commands.
       keywords: 'wallpaper background theme personalize',
       icon: ICONS.personalize,
       fn: () => document.querySelector('[data-win-action="personalize"]')?.click()
-    }
+    },
+    { id: 'aq-cortex', label: 'Cortex AI', keywords: 'cortex ai brain assistant', icon: '<span class="aq-ico">\uD83E\uDDE0</span>', fn: () => { if (window.launchAuroraV2App) window.launchAuroraV2App('cortex'); } },
+    { id: 'aq-edge', label: 'EdgeRider', keywords: 'edgerider trips gig mileage telemetry', icon: '<span class="aq-ico">\uD83D\uDE97</span>', fn: () => { if (window.__aqPanel) window.__aqPanel('edge'); } },
+    { id: 'aq-shop', label: 'ShopSense', keywords: 'shopsense obd dtc codes vehicle', icon: '<span class="aq-ico">\uD83D\uDD27</span>', fn: () => { if (window.__aqPanel) window.__aqPanel('shop'); } }
   ];
 
   // Desktop Shortcut Grid (Positioned below Personalize icon)
