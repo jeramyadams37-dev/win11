@@ -1,23 +1,20 @@
-#!/bin/bash
-# AuroraOS v8.5 | High-Fidelity UI + Persistence Engine
-# [2025-12-13] Backup & Recovery Protocol Active
-
+#!/data/data/com.termux/files/usr/bin/bash
+# AuroraOS v8.5 | Master Deployment Script for EdgeRider & ShopSense
 FILE="index.html"
-PORT=8080
+PORT=8000
 
-# 1. Implementation of Backups
+echo "[*] Creating backup directory..."
 mkdir -p backups
 if [ -f "$FILE" ]; then
     cp "$FILE" "backups/index_$(date +%Y%m%d_%H%M%S).bak.html"
     echo "📦 Backup created in /backups"
 fi
 
-# 2. Kill zombie processes on port 8080
-echo "🧹 Clearing port $PORT..."
+echo "[*] Clearing port $PORT..."
 fuser -k $PORT/tcp 2>/dev/null || lsof -i :$PORT -t | xargs kill -9 2>/dev/null
 
-# 3. Generate High-Fidelity index.html
-cat << 'WEBOS' > "$FILE"
+echo "[*] Generating updated index.html with EdgeRider and ShopSense..."
+cat << "WEBOS" > "$FILE"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,180 +22,67 @@ cat << 'WEBOS' > "$FILE"
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AuroraOS - Windows 11 Web Edition</title>
   <style>
-    :root {
-      --accent: #0078d4; --accent-light: #2b88d8;
-      --glass-bg: rgba(32, 32, 32, 0.75);
-      --glass-border: rgba(255, 255, 255, 0.08);
-      --text-main: #ffffff; --text-secondary: rgba(255, 255, 255, 0.6);
-      --taskbar-height: 48px; --hover: rgba(255, 255, 255, 0.1);
-    }
-    * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-    body { 
-      margin: 0; padding: 0; height: 100vh; overflow: hidden;
-      font-family: 'Segoe UI Variable', system-ui, sans-serif;
-      background: url('https://w.wallhaven.cc/full/y8/wallhaven-y8pw9k.jpg') center/cover;
-      color: var(--text-main); user-select: none;
-    }
-    
-    /* TASKBAR */
-    #taskbar {
-      position: fixed; bottom: 0; width: 100%; height: var(--taskbar-height);
-      background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(20px);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 12px; z-index: 10000; border-top: 1px solid var(--glass-border);
-    }
+    :root { --accent: #0078d4; --glass-bg: rgba(32, 32, 32, 0.75); --glass-border: rgba(255, 255, 255, 0.08); --text-main: #ffffff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: system-ui, sans-serif; background: #111; color: var(--text-main); }
+    #taskbar { position: fixed; bottom: 0; width: 100%; height: 48px; background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 10000; border-top: 1px solid var(--glass-border); }
     .taskbar-center { display: flex; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
-    .tb-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 22px; }
-    .tb-btn:hover { background: var(--hover); }
-    .tb-btn.active::after { content: ''; position: absolute; bottom: 4px; width: 6px; height: 3px; background: var(--accent); border-radius: 2px; }
-
-    /* START MENU */
-    #start-menu {
-      position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%) translateY(20px);
-      width: 640px; height: 600px; background: var(--glass-bg); backdrop-filter: blur(60px) saturate(200%);
-      border: 1px solid var(--glass-border); border-radius: 12px; z-index: 9500;
-      display: none; opacity: 0; transition: all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-      padding: 30px; box-shadow: 0 24px 64px rgba(0,0,0,0.8);
-    }
-    #start-menu.visible { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    /* WINDOWS */
-    .window {
-      position: absolute; background: var(--glass-bg); backdrop-filter: blur(40px);
-      border: 1px solid var(--glass-border); border-radius: 10px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden;
-    }
-    .window.focused { z-index: 5000; box-shadow: 0 12px 60px rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.2); }
+    .tb-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 6px; cursor: pointer; font-size: 22px; }
+    .tb-btn:hover { background: rgba(255, 255, 255, 0.1); }
+    #start-menu { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%) translateY(20px); width: 680px; height: 500px; background: var(--glass-bg); backdrop-filter: blur(60px); border: 1px solid var(--glass-border); border-radius: 12px; z-index: 9500; display: none; padding: 30px; box-shadow: 0 24px 64px rgba(0,0,0,0.8); }
+    #start-menu.visible { display: block; transform: translateX(-50%) translateY(0); }
+    .window { position: absolute; background: var(--glass-bg); backdrop-filter: blur(40px); border: 1px solid var(--glass-border); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; }
     .titlebar { padding: 10px 15px; display: flex; align-items: center; cursor: move; background: rgba(255,255,255,0.03); }
     .title-text { flex: 1; font-size: 12px; font-weight: 500; }
-    .win-controls { display: flex; gap: 8px; }
     .win-btn { padding: 5px 10px; cursor: pointer; font-size: 14px; border-radius: 4px; }
-    .win-btn:hover { background: var(--hover); }
+    .win-btn:hover { background: rgba(255,255,255,0.1); }
     .close-btn:hover { background: #c42b1c; }
-    .content { flex: 1; padding: 0; overflow: auto; position: relative; }
-
-    /* APPS */
-    .notepad-area { width: 100%; height: 100%; background: transparent; color: white; border: none; padding: 15px; font-family: monospace; outline: none; resize: none; font-size: 14px; }
-    .fe-body { display: flex; height: 100%; }
-    .fe-sidebar { width: 180px; border-right: 1px solid var(--glass-border); padding: 10px; }
-    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 10px; height: 100%; }
-    .calc-btn { background: rgba(255,255,255,0.05); border: none; color: white; font-size: 18px; cursor: pointer; border-radius: 4px; }
-    .calc-btn:hover { background: rgba(255,255,255,0.1); }
+    .content { flex: 1; padding: 0; overflow: auto; }
   </style>
 </head>
 <body>
-
 <div id="desktop"></div>
-
 <div id="start-menu">
-  <div style="margin-bottom:20px; font-size: 14px; font-weight: 600;">Pinned Apps</div>
-  <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px;">
-    <div onclick="openApp('explorer')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🗂️</div><div style="font-size:11px;">Files</div></div>
-    <div onclick="openApp('notepad')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">📝</div><div style="font-size:11px;">Notepad</div></div>
-    <div onclick="openApp('calc')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🧮</div><div style="font-size:11px;">Calc</div></div>
-    <div onclick="openApp('settings')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">⚙️</div><div style="font-size:11px;">Settings</div></div>
+  <div style="margin-bottom:20px; font-weight: 600;">AuroraOS Modules</div>
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+    <div onclick="openApp('edgerider')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🚗</div><div style="font-size:11px;">EdgeRider</div></div>
+    <div onclick="openApp('shopsense')" style="text-align:center; cursor:pointer;"><div style="font-size:32px;">🔧</div><div style="font-size:11px;">ShopSense</div></div>
   </div>
 </div>
-
 <div id="taskbar">
-  <div class="tb-btn" onclick="toggleWidgets()">⊞</div>
-  <div class="taskbar-center">
-    <div class="tb-btn" onclick="toggleStart()">💠</div>
-    <div id="tb-active" style="display:flex; gap:4px;"></div>
-  </div>
-  <div id="clock" style="font-size:12px; text-align:right;">
-    <div id="clock-time">00:00</div>
-    <div id="clock-date">01/01/2026</div>
-  </div>
+  <div class="taskbar-center"><div class="tb-btn" onclick="toggleStart()">💠</div></div>
 </div>
-
 <script>
-// --- Persistence Logic ---
-const Drive = {
-  save: (k, v) => localStorage.setItem('aurora_v8_'+k, JSON.stringify(v)),
-  load: (k) => { 
-    const val = localStorage.getItem('aurora_v8_'+k);
-    try { return JSON.parse(val); } catch { return val; }
-  }
-};
-
-// --- App Registry ---
-const APPS = {
-  explorer: { title: "File Explorer", icon: "🗂️", w: 800, h: 500, content: () => `<div class="fe-body"><div class="fe-sidebar">🏠 Home<br>📄 Docs</div><div style="padding:20px;">${Drive.load('np_text') ? '📝 AutoSave_Backup.txt' : 'No files found.'}</div></div>` },
-  notepad: { title: "Notepad", icon: "📝", w: 600, h: 450, content: () => `<textarea class="notepad-area" oninput="Drive.save('np_text', this.value)" placeholder="Start typing...">${Drive.load('np_text') || ''}</textarea>` },
-  calc: { title: "Calculator", icon: "🧮", w: 320, h: 480, content: () => `<div class="calc-grid">${['C','/','*','-','7','8','9','+','4','5','6','=','1','2','3','0'].map(b => `<button class="calc-btn">${b}</button>`).join('')}</div>` },
-  settings: { title: "Settings", icon: "⚙️", w: 700, h: 500, content: () => `<div style="padding:30px;"><h2>System</h2><p>Device: Moto G 5G</p><p>OS: AuroraOS v8.5</p><p>Developer: Jerany Adams</p></div>` }
-};
-
-let windows = {};
-let zIdx = 1000;
-
-function toggleStart() { document.getElementById('start-menu').classList.toggle('visible'); }
-
-function openApp(id) {
-  document.getElementById('start-menu').classList.remove('visible');
-  if (windows[id]) return focusWin(id);
-
-  const app = APPS[id];
-  const win = document.createElement('div');
-  win.className = 'window focused';
-  win.id = 'win-' + id;
-  win.style.width = app.w + 'px'; win.style.height = app.h + 'px';
-  win.style.left = '100px'; win.style.top = '100px';
-  win.style.zIndex = ++zIdx;
-
-  win.innerHTML = `
-    <div class="titlebar" onmousedown="focusWin('${id}')">
-      <span style="margin-right:8px">${app.icon}</span>
-      <span class="title-text">${app.title}</span>
-      <div class="win-controls">
-        <div class="win-btn" onclick="closeApp('${id}')">✕</div>
-      </div>
-    </div>
-    <div class="content">${app.content()}</div>
-  `;
-
-  document.getElementById('desktop').appendChild(win);
-  windows[id] = true;
-  makeDraggable(win);
-  updateTaskbar();
-}
-
-function closeApp(id) { document.getElementById('win-'+id).remove(); delete windows[id]; updateTaskbar(); }
-function focusWin(id) { document.querySelectorAll('.window').forEach(w => w.classList.remove('focused')); const w = document.getElementById('win-'+id); w.classList.add('focused'); w.style.zIndex = ++zIdx; }
-
-function updateTaskbar() {
-  const bar = document.getElementById('tb-active'); bar.innerHTML = '';
-  Object.keys(windows).forEach(id => {
-    bar.innerHTML += `<div class="tb-btn active" onclick="focusWin('${id}')">${APPS[id].icon}</div>`;
-  });
-}
-
-function makeDraggable(el) {
-  let ox = 0, oy = 0, nx = 0, ny = 0;
-  const tb = el.querySelector('.titlebar');
-  tb.onmousedown = (e) => {
-    e.preventDefault(); ox = e.clientX; oy = e.clientY;
-    document.onmousemove = (e) => {
-      nx = ox - e.clientX; ny = oy - e.clientY; ox = e.clientX; oy = e.clientY;
-      el.style.top = (el.offsetTop - ny) + "px"; el.style.left = (el.offsetLeft - nx) + "px";
-    };
-    document.onmouseup = () => { document.onmousemove = null; document.onmouseup = null; };
+  const APPS = {
+    edgerider: { title: "EdgeRider Telemetry", icon: "🚗", w: 720, h: 480, content: () => `<div style="padding:20px;"><h3>EdgeRider Gig Telemetry</h3><button onclick="fetchEdgeTrips()" style="padding:6px 14px; background:#0078d4; color:white; border:none; border-radius:4px;">Fetch Trips</button><div id="er-output" style="margin-top:10px; font-family:monospace; font-size:12px;">Click fetch to load data.</div></div>` },
+    shopsense: { title: "ShopSense OBD-II", icon: "🔧", w: 700, h: 450, content: () => `<div style="padding:20px;"><h3>ShopSense DTC Codes</h3><button onclick="fetchShopCodes()" style="padding:6px 14px; background:#0078d4; color:white; border:none; border-radius:4px;">Load Codes</button><div id="ss-output" style="margin-top:10px; font-family:monospace; font-size:12px;">Click load to inspect DTCs.</div></div>` }
   };
-}
-
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clock-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  document.getElementById('clock-date').innerText = now.toLocaleDateString();
-}
-setInterval(updateClock, 1000); updateClock();
+  let windows = {}, zIdx = 1000;
+  function toggleStart() { document.getElementById('start-menu').classList.toggle('visible'); }
+  function openApp(id) {
+    document.getElementById('start-menu').classList.remove('visible');
+    if (windows[id]) return;
+    const app = APPS[id], win = document.createElement('div');
+    win.className = 'window focused'; win.id = 'win-' + id;
+    win.style.width = app.w + 'px'; win.style.height = app.h + 'px'; win.style.left = '100px'; win.style.top = '100px'; win.style.zIndex = ++zIdx;
+    win.innerHTML = '<div class="titlebar"><span>' + app.icon + '</span><span class="title-text">' + app.title + '</span><div class="win-btn close-btn" onclick="closeApp(\x27' + id + '\x27)">✕</div></div><div class="content">' + app.content() + '</div>';
+    document.getElementById('desktop').appendChild(win);
+    windows[id] = true;
+  }
+  function closeApp(id) { document.getElementById('win-'+id).remove(); delete windows[id]; }
+  function fetchEdgeTrips() {
+    fetch('http://127.0.0.1:8420/api/edgerider/trips').then(r => r.json()).then(d => {
+      document.getElementById('er-output').innerHTML = JSON.stringify(d.trips, null, 2);
+    }).catch(e => alert('Bridge offline on port 8420'));
+  }
+  function fetchShopCodes() {
+    fetch('http://127.0.0.1:8420/api/shopsense/dtc').then(r => r.json()).then(d => {
+      document.getElementById('ss-output').innerHTML = JSON.stringify(d.dtc_codes, null, 2);
+    }).catch(e => alert('Bridge offline on port 8420'));
+  }
 </script>
 </body>
 </html>
 WEBOS
 
-echo "✅ AuroraOS v8.5 deployed with full Original UI."
-echo "🌐 Access at: http://localhost:$PORT"
-echo "----------------------------------------------------"
-python -m http.server $PORT
+echo "[OK] deploy_aurora.sh generated successfully!"
