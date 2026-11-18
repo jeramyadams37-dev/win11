@@ -123,7 +123,7 @@
     var box = document.createElement('div');
     box.className = 'aq-search';
     box.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;';
-    box.innerHTML = '<select class="aq-db" style="padding:6px;border-radius:6px;background:#0f172a;color:#fff;border:1px solid #334155"><option value="docs">Docs</option><option value="cameras">Cameras</option></select>' +
+    box.innerHTML = '<select class="aq-db" style="padding:6px;border-radius:6px;background:#0f172a;color:#fff;border:1px solid #334155"><option value="docs">Docs</option><option value="cameras">Cameras</option><option value="muse">Muse</option></select>' +
       '<input class="aq-q" type="search" placeholder="Search your data..." style="flex:1;min-width:120px;padding:6px 8px;font-size:16px;border-radius:6px;background:#0f172a;color:#fff;border:1px solid #334155">' +
       '<button type="button" class="aq-go" style="padding:6px 12px;border:0;border-radius:6px;background:#0078d4;color:#fff">Search</button>' +
       '<button type="button" class="aq-all" style="padding:6px 12px;border:0;border-radius:6px;background:#475569;color:#fff">All commands</button>';
