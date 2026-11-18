@@ -615,3 +615,21 @@
     }
   });
 })();
+
+/* === AUTO-MINIMIZE QUICK MENU ON OUTSIDE TAP === */
+(function() {
+  if (window.__auroraAutoMinBound) return;
+  window.__auroraAutoMinBound = true;
+
+  const autoMinimize = (e) => {
+    const menu = document.querySelector('[data-movable-ready="1"]');
+    if (!menu || menu.classList.contains('aurora-menu-minimized')) return;
+    if (menu.contains(e.target)) return;
+    if (e.target.closest('#start-btn, .start-btn, [data-start-toggle]')) return;
+    menu.classList.add('aurora-menu-minimized');
+    const minBtn = menu.querySelector('.aurora-min-btn');
+    if (minBtn) minBtn.textContent = '▲';
+  };
+
+  document.addEventListener('pointerdown', autoMinimize, true);
+})();
