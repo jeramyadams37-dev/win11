@@ -67,6 +67,17 @@
     bar.className = 'aq-dockbar';
     bar.innerHTML = '<span>\u283F Quick Menu</span><button type="button">\u2014</button>';
     d.insertBefore(bar, d.firstChild);
+    var hb = document.createElement('button');
+    hb.type = 'button';
+    hb.className = 'aq-help';
+    hb.title = 'Cortex commands and help';
+    hb.style.cssText = 'border:none;background:rgba(255,255,255,0.08);color:#fff;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:600;';
+    hb.innerHTML = '<span>\u2753</span><span>Help</span>';
+    hb.onclick = function () {
+      if (typeof window.toggleAuroraGuide === 'function') window.toggleAuroraGuide();
+      else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1', bubbles: true }));
+    };
+    d.appendChild(hb);
     var b = bar.querySelector('button');
     function setMini(m) {
       d.classList.toggle('aq-dock-mini', m);
